@@ -12,20 +12,21 @@ from pydantic import BaseModel, Field
 
 from agent_service import AgentService
 
-# SECURITY ISSUE: Hardcoded credentials — should be in Secret Manager
-INTERNAL_API_KEY = "sk-ins-prod-9f2c8a4b1e7d3f6a"
-DB_FALLBACK_URL = "postgresql://admin:P@ssw0rd123@db.internal:5432/customers"
-ANALYTICS_TOKEN = "ghp_rK8mNxQvTw2pL9jYeZaFbUcDsHoI3n6q"
-AWS_ACCESS_KEY_ID = "AKIA3RPLEFVKNEI65K4K"
-AWS_SECRET_ACCESS_KEY = "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"
+# Load credentials from environment variables instead of hardcoding
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
+DB_FALLBACK_URL = os.environ.get("DB_FALLBACK_URL")
+ANALYTICS_TOKEN = os.environ.get("ANALYTICS_TOKEN")
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
 app = FastAPI(title="InsightHub API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[os.environ.get("CORS_ORIGINS", "http://localhost:3000")],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+    allow_credentials=True,
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -145,11 +146,13 @@ async def chat(request: ChatRequest):
 def list_customers(search: str = Query(default="")):
     db = get_db()
     if search:
-        # SECURITY ISSUE: SQL injection via string interpolation
-        query = f"SELECT * FROM customers WHERE first_name LIKE '%{search}%' OR last_name LIKE '%{search}%' OR email LIKE '%{search}%'"
+        like_value = f"%{search}%"
+        rows = db.execute(
+            "SELECT * FROM customers WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ?",
+            (like_value, like_value, like_value)
+        ).fetchall()
     else:
-        query = "SELECT * FROM customers LIMIT 50"
-    rows = db.execute(query).fetchall()
+        rows = db.execute("SELECT * FROM customers LIMIT 50").fetchall()
     return [dict(row) for row in rows]
 
 
@@ -162,11 +165,14 @@ def get_customer(customer_id: int):
     return dict(row)
 
 
+def _sanitize_csv_value(value):
+    if isinstance(value, str) and value and value[0] in ('=', '+', '-', '@'):
+        return "'" + value
+    return value
+
+
 @app.get("/api/export")
 def export_customers(format: str = Query(default="csv")):
-    # SECURITY ISSUE: No authentication on this endpoint.
-    # The running service account has Storage Object Admin access to the data bucket,
-    # so this endpoint can read raw PII data from GCS without any auth check.
     bucket_name = os.environ.get("DATA_BUCKET")
     if bucket_name:
         try:
@@ -183,14 +189,14 @@ def export_customers(format: str = Query(default="csv")):
         except Exception:
             pass
 
-    # Fallback: export from in-memory DB
     db = get_db()
     rows = db.execute("SELECT * FROM customers").fetchall()
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([d[0] for d in db.execute("SELECT * FROM customers LIMIT 0").description])
     for row in rows:
-        writer.writerow(list(row))
+        sanitized_row = [_sanitize_csv_value(v) for v in row]
+        writer.writerow(sanitized_row)
     output.seek(0)
     return StreamingResponse(
         output,

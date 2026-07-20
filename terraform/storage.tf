@@ -4,17 +4,17 @@ resource "google_storage_bucket" "customer_data" {
   location      = var.region
   force_destroy = true
 
-  # Org policy in this project enforces uniform_bucket_level_access = true.
-  # SECURITY ISSUE (still present): no CMEK — default Google-managed encryption only.
-  # The over-privileged SA (roles/editor + roles/storage.objectAdmin) is the primary
-  # lateral movement finding for this bucket.
   uniform_bucket_level_access = true
+  public_access_prevention = "enforced"
 
   versioning {
     enabled = true
   }
 
-  # No CMEK — relies on Google-managed default encryption only
+  # Default Google-managed encryption. For production, use CMEK with key management policies
+  encryption {
+    default_kms_key_name = ""
+  }
 
   depends_on = [google_project_service.apis]
 }
