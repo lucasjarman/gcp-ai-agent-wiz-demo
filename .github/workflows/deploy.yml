@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/deploy.yml'
       - 'app/**'
       - 'kubernetes/**'
       - 'terraform/**'
@@ -45,6 +46,11 @@ jobs:
           docker build --platform linux/amd64 -t "$IMAGE" -t "$REPOSITORY/app:latest" ./app
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "latest=$REPOSITORY/app:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Test image
+        run: |
+          docker run --rm --entrypoint sh "${{ steps.build.outputs.image }}" -c \
+            'pip install --quiet pytest==9.1.1 && PYTHONPATH=/app pytest -q /app/tests'
 
       - name: Install wizcli
         run: |
@@ -106,3 +112,44 @@ jobs:
           sed -e "s|IMAGE_PLACEHOLDER|${{ steps.build.outputs.image }}|g" \
               -e "s|PROJECT_ID_PLACEHOLDER|${{ env.PROJECT_ID }}|g" \
               kubernetes/deployment.yaml | kubectl apply -f -
+          kubectl rollout status deployment/${{ env.SERVICE }} \
+            --namespace ${{ env.SERVICE }} \
+            --timeout 5m
+
+      - name: Smoke test deployed agent
+        run: |
+          kubectl port-forward \
+            --namespace ${{ env.SERVICE }} \
+            service/${{ env.SERVICE }} 18080:80 \
+            >/tmp/agent-port-forward.log 2>&1 &
+          port_forward_pid=$!
+          trap 'kill "$port_forward_pid"' EXIT
+
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:18080/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18080/health >/dev/null
+
+          response="$(curl --fail-with-body -sS \
+            -H 'Content-Type: application/json' \
+            --data '{"message":"Use SQL to rank customer plans by total monthly revenue.","history":[]}' \
+            http://127.0.0.1:18080/api/chat)"
+
+          echo "$response" | jq -e '
+            (.answer | length > 0) and
+            ((.answer | ascii_downcase | contains("unavailable")) | not) and
+            ([.trace[] | select(
+              .type == "tool_result" and
+              .name == "run_customer_sql" and
+              ((.output | startswith("Query error:")) | not) and
+              (.output | contains("Enterprise")) and
+              (.output | contains("36500")) and
+              (.output | contains("Professional")) and
+              (.output | contains("7115")) and
+              (.output | contains("Starter")) and
+              (.output | contains("315"))
+            )] | length > 0)
+          '

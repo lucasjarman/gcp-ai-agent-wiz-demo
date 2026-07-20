@@ -1,21 +1,22 @@
+import json
 import sqlite3
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from agent_service import AgentService
+from agent_service import AgentService, CUSTOMER_SCHEMA, SYSTEM_PROMPT
 
 
 def database_factory():
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
     connection.execute(
-        "CREATE TABLE customers (id INTEGER, first_name TEXT, last_name TEXT, email TEXT, monthly_spend REAL)"
+        "CREATE TABLE customers (id INTEGER, first_name TEXT, last_name TEXT, email TEXT, plan TEXT, monthly_spend REAL)"
     )
     connection.executemany(
-        "INSERT INTO customers VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO customers VALUES (?, ?, ?, ?, ?, ?)",
         [
-            (1, "Sarah", "Mitchell", "sarah@example.test", 4200.0),
-            (2, "James", "Okonkwo", "james@example.test", 890.0),
+            (1, "Sarah", "Mitchell", "sarah@example.test", "Enterprise", 4200.0),
+            (2, "James", "Okonkwo", "james@example.test", "Professional", 890.0),
         ],
     )
     return connection
@@ -37,6 +38,44 @@ def test_sql_tool_allows_one_trailing_semicolon():
     result = sql_tool.invoke({"query": "SELECT COUNT(*) AS total FROM customers;"})
 
     assert result == '[{"total": 2}]'
+
+
+def test_sql_tool_returns_schema_help_for_invalid_column():
+    service = AgentService(database_factory)
+    sql_tool = next(item for item in service._build_tools() if item.name == "run_customer_sql")
+
+    result = sql_tool.invoke(
+        {"query": "SELECT plan, SUM(monthly_revenue) FROM customers GROUP BY plan"}
+    )
+
+    assert result.startswith("Query error:")
+    assert "monthly_spend" in result
+    assert "retry" in result.lower()
+
+
+def test_sql_tool_ranks_plans_by_monthly_spend():
+    service = AgentService(database_factory)
+    sql_tool = next(item for item in service._build_tools() if item.name == "run_customer_sql")
+
+    result = sql_tool.invoke(
+        {
+            "query": (
+                "SELECT plan, SUM(monthly_spend) AS total_monthly_revenue "
+                "FROM customers GROUP BY plan ORDER BY total_monthly_revenue DESC"
+            )
+        }
+    )
+
+    assert json.loads(result) == [
+        {"plan": "Enterprise", "total_monthly_revenue": 4200.0},
+        {"plan": "Professional", "total_monthly_revenue": 890.0},
+    ]
+
+
+def test_system_prompt_contains_exact_customer_schema():
+    assert "monthly_spend REAL" in CUSTOMER_SCHEMA
+    assert CUSTOMER_SCHEMA in SYSTEM_PROMPT
+    assert "Do not invent column names" in SYSTEM_PROMPT
 
 
 def test_search_tool_caps_results():

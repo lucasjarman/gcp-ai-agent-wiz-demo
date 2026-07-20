@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import sqlite3
 from collections.abc import Callable
 
 from langchain.agents import create_agent
@@ -11,11 +12,32 @@ from langchain_google_vertexai import ChatVertexAI
 from executor import IsolatedExecutor
 
 
-SYSTEM_PROMPT = """You are InsightHub Analyst, an autonomous customer intelligence agent.
+CUSTOMER_SCHEMA = """customers (
+  id INTEGER,
+  first_name TEXT,
+  last_name TEXT,
+  email TEXT,
+  phone TEXT,
+  ssn TEXT,
+  credit_card TEXT,
+  credit_card_expiry TEXT,
+  plan TEXT,
+  monthly_spend REAL,
+  created_at TEXT
+)"""
+
+
+SYSTEM_PROMPT = f"""You are InsightHub Analyst, an autonomous customer intelligence agent.
 You work only with the synthetic demonstration dataset provided by your tools.
 Use tools when facts or calculations are required and explain which tools you used.
 The customer SQL tool is read-only. Never attempt writes, cloud administration, credential
 access, or activity outside the demonstration dataset. Keep answers concise and useful.
+
+The exact customer database schema is:
+{CUSTOMER_SCHEMA}
+
+Do not invent column names. For monthly revenue calculations, aggregate monthly_spend.
+If a tool returns a query error, use the available-column guidance to correct the query and retry.
 """
 
 
@@ -83,7 +105,11 @@ class AgentService:
 
         @tool("run_customer_sql")
         def run_customer_sql(query: str) -> str:
-            """Execute one read-only SELECT query against synthetic customer records."""
+            """Execute one read-only SELECT query against synthetic customer records.
+
+            Columns are id, first_name, last_name, email, phone, ssn, credit_card,
+            credit_card_expiry, plan, monthly_spend, and created_at.
+            """
             normalized = re.sub(r"\s+", " ", query.strip())
             if normalized.endswith(";"):
                 normalized = normalized[:-1].rstrip()
@@ -91,7 +117,15 @@ class AgentService:
                 return "Rejected: only SELECT statements are allowed."
             if ";" in normalized or re.search(r"(?i)\b(attach|detach|pragma)\b", normalized):
                 return "Rejected: multiple statements and database directives are not allowed."
-            rows = database_factory().execute(normalized).fetchmany(25)
+            connection = database_factory()
+            try:
+                rows = connection.execute(normalized).fetchmany(25)
+            except sqlite3.Error as exc:
+                columns = [row[1] for row in connection.execute("PRAGMA table_info(customers)")]
+                return (
+                    f"Query error: {exc}. Available columns: {', '.join(columns)}. "
+                    "Correct the query and retry."
+                )
             return json.dumps([dict(row) for row in rows])
 
         @tool("run_python_analysis")
