@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/scan-nudge.sh",
+            "timeout": 5,
+            "statusMessage": "Checking file type..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(*git commit*)",
+            "command": ".claude/hooks/pre-commit-gate.sh",
+            "timeout": 60,
+            "statusMessage": "Running Wiz security scan (pre-commit)..."
+          },
+          {
+            "type": "command",
+            "if": "Bash(*git push*)",
+            "command": ".claude/hooks/pre-push-gate.sh",
+            "timeout": 120,
+            "statusMessage": "Running Wiz security scan (pre-push)..."
+          }
+        ]
+      }
+    ]
+  }
+}

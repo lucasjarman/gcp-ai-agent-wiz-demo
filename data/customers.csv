@@ -1,0 +1,16 @@
+id,first_name,last_name,email,phone,ssn,credit_card,credit_card_expiry,plan,monthly_spend,created_at
+1,Sarah,Mitchell,sarah.mitchell@acmecorp.com,+1-555-0142,532-88-1947,4532015112830366,09/27,Enterprise,4200.00,2022-03-14
+2,James,Okonkwo,james.okonkwo@vertextech.io,+1-555-0289,219-46-8833,5425233430109903,11/26,Professional,890.00,2022-05-22
+3,Priya,Ramachandran,priya.r@globalfinance.com,+1-555-0317,784-21-6059,4916338506082832,04/28,Enterprise,7800.00,2021-11-08
+4,Daniel,Ferreira,daniel.ferreira@bluepeak.net,+1-555-0456,631-74-2198,374251018720018,08/25,Starter,150.00,2023-01-30
+5,Amanda,Holloway,a.holloway@nextgen-health.org,+1-555-0521,413-97-5526,5105105105105100,03/27,Professional,1200.00,2022-08-15
+6,Michael,Chen,mchen@silicon-bridge.com,+1-555-0634,882-53-7741,4111111111111111,12/26,Enterprise,9400.00,2021-06-03
+7,Fatima,Al-Rashid,fatima.alrashid@horizons-me.ae,+971-55-7823,N/A,5500005555555559,07/28,Professional,2100.00,2022-12-19
+8,Robert,Espinoza,r.espinoza@cascadelogistics.com,+1-555-0712,276-84-3350,4012888888881881,02/26,Starter,75.00,2023-04-07
+9,Yuki,Tanaka,y.tanaka@tokyoventures.jp,+81-3-5555-1928,N/A,3566002020360505,10/27,Enterprise,5600.00,2022-02-28
+10,Chloe,Beaumont,c.beaumont@laviedesigns.fr,+33-1-55-24-89-10,N/A,4716174954024855,06/25,Professional,680.00,2023-06-11
+11,Marcus,Washington,m.washington@fedstaff.gov,+1-555-0883,594-12-8867,4532779879690481,01/28,Enterprise,3300.00,2021-09-17
+12,Elena,Volkova,e.volkova@eastblock-tech.ru,+7-495-555-2847,N/A,5425233430109903,05/26,Starter,90.00,2023-02-14
+13,David,Osei,dosei@panafricanauto.co.ke,+254-20-555-3301,N/A,4916338506082832,09/27,Professional,445.00,2022-10-30
+14,Jessica,Park,jpark@koreanwave-media.kr,+82-2-555-8812,N/A,4111111111111111,11/28,Enterprise,6200.00,2021-07-22
+15,Thomas,Bergmann,t.bergmann@rhine-industrial.de,+49-69-555-4471,N/A,3714496353984731,03/26,Professional,1800.00,2022-04-05

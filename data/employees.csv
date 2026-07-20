@@ -1,0 +1,11 @@
+id,first_name,last_name,email,role,department,salary,ssn,manager_id,hire_date,access_level
+1,Alexandra,Torres,a.torres@insighthub.io,Chief Executive Officer,Executive,380000,521-88-2941,NULL,2018-01-15,ADMIN
+2,Ryan,Nakamura,r.nakamura@insighthub.io,Chief Technology Officer,Engineering,310000,614-37-9502,1,2018-03-01,ADMIN
+3,Melissa,Grant,m.grant@insighthub.io,VP of Engineering,Engineering,245000,782-51-6083,2,2019-06-10,ELEVATED
+4,Samuel,Adeyemi,s.adeyemi@insighthub.io,Senior Software Engineer,Engineering,185000,394-76-1248,3,2020-09-14,STANDARD
+5,Ingrid,Hoffmann,i.hoffmann@insighthub.io,Senior Software Engineer,Engineering,180000,867-43-5129,3,2020-11-02,STANDARD
+6,Kwame,Asante,k.asante@insighthub.io,Security Engineer,Security,195000,203-69-8714,3,2021-02-22,ELEVATED
+7,Nadia,Petrova,n.petrova@insighthub.io,Data Engineer,Data,170000,715-82-4063,3,2021-05-17,STANDARD
+8,Carlos,Mendez,c.mendez@insighthub.io,DevOps Engineer,Engineering,175000,438-91-5520,3,2021-07-08,ELEVATED
+9,Aisha,Kamara,a.kamara@insighthub.io,Product Manager,Product,165000,651-24-7839,1,2019-04-30,STANDARD
+10,Patrick,Flynn,p.flynn@insighthub.io,Chief Revenue Officer,Sales,290000,129-57-3846,1,2018-08-20,ADMIN

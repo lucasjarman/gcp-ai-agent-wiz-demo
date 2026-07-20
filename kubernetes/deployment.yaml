@@ -1,0 +1,186 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-dlc-demo
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-agent-exec
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-dlc-demo
+  namespace: ai-dlc-demo
+  annotations:
+    iam.gke.io/gcp-service-account: ai-dlc-demo-sa@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: executor
+  namespace: ai-agent-exec
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: execution-job-manager
+  namespace: ai-agent-exec
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs/status"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-execution-job-manager
+  namespace: ai-agent-exec
+subjects:
+  - kind: ServiceAccount
+    name: ai-dlc-demo
+    namespace: ai-dlc-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: execution-job-manager
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-executor-network
+  namespace: ai-agent-exec
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-dlc-demo
+  namespace: ai-dlc-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-dlc-demo
+  template:
+    metadata:
+      labels:
+        app: ai-dlc-demo
+        workload-purpose: ai-agent
+    spec:
+      serviceAccountName: ai-dlc-demo
+      containers:
+        - name: app
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DATA_BUCKET
+              value: PROJECT_ID_PLACEHOLDER-customer-data
+            - name: EXECUTOR_ENABLED
+              value: "true"
+            - name: EXECUTOR_IMAGE
+              value: IMAGE_PLACEHOLDER
+            - name: EXECUTOR_NAMESPACE
+              value: ai-agent-exec
+            - name: EXECUTOR_TIMEOUT_SECONDS
+              value: "90"
+            - name: GOOGLE_CLOUD_PROJECT
+              value: PROJECT_ID_PLACEHOLDER
+            - name: VERTEX_LOCATION
+              value: global
+            - name: VERTEX_MODEL
+              value: gemini-2.5-flash
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-dlc-demo
+  namespace: ai-dlc-demo
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: ai-dlc-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# Keep the GCP load balancer visibly public for the Wiz exposure graph while
+# rejecting direct-to-origin traffic at the pod layer. Cloudflare performs the
+# end-user/Wiz allowlist; only Cloudflare edge addresses can reach this pod.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cloudflare-origin
+  namespace: ai-dlc-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-dlc-demo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock: { cidr: 173.245.48.0/20 }
+        - ipBlock: { cidr: 103.21.244.0/22 }
+        - ipBlock: { cidr: 103.22.200.0/22 }
+        - ipBlock: { cidr: 103.31.4.0/22 }
+        - ipBlock: { cidr: 141.101.64.0/18 }
+        - ipBlock: { cidr: 108.162.192.0/18 }
+        - ipBlock: { cidr: 190.93.240.0/20 }
+        - ipBlock: { cidr: 188.114.96.0/20 }
+        - ipBlock: { cidr: 197.234.240.0/22 }
+        - ipBlock: { cidr: 198.41.128.0/17 }
+        - ipBlock: { cidr: 162.158.0.0/15 }
+        - ipBlock: { cidr: 104.16.0.0/13 }
+        - ipBlock: { cidr: 104.24.0.0/14 }
+        - ipBlock: { cidr: 172.64.0.0/13 }
+        - ipBlock: { cidr: 131.0.72.0/22 }
+        - ipBlock: { cidr: 35.191.0.0/16 }
+        - ipBlock: { cidr: 130.211.0.0/22 }
+      ports:
+        - protocol: TCP
+          port: 8080

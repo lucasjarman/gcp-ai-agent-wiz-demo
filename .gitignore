@@ -1,0 +1,32 @@
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfstate.d/
+terraform/terraform.tfvars
+terraform/*.tfvars.json
+terraform/override.tf
+terraform/override.tf.json
+terraform/.terraformrc
+terraform/terraform.rc
+terraform/*.tfplan
+terraform/tfplan
+
+# Secrets — never commit
+*.env
+.env.*
+**/secrets.*
+**/credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+dist/
+build/
+
+# macOS
+.DS_Store
+pbcopy

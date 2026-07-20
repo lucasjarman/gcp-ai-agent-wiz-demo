@@ -1,0 +1,108 @@
+name: Build, Scan & Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'kubernetes/**'
+      - 'terraform/**'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: australia-southeast1
+  SERVICE: ai-dlc-demo
+
+jobs:
+  build-scan-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ env.REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        id: build
+        run: |
+          REPOSITORY="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/ai-dlc-demo"
+          IMAGE="$REPOSITORY/app:${{ github.sha }}"
+          docker build --platform linux/amd64 -t "$IMAGE" -t "$REPOSITORY/app:latest" ./app
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "latest=$REPOSITORY/app:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Install wizcli
+        run: |
+          curl -fsSLo wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          chmod +x wizcli
+
+      # Source code scan — IaC misconfigs + SAST (these engines need source, not container FS)
+      - name: Wiz source scan (IaC + SAST)
+        continue-on-error: true
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+        run: |
+          ./wizcli scan dir . \
+            --policies "Default IaC policy" \
+            --policies "Default SAST policy (Wiz CI/CD scan)"
+
+      # Container image scan — vulns, secrets, sensitive data, software license
+      - name: Wiz image scan
+        continue-on-error: true
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+        run: |
+          ./wizcli scan container-image "${{ steps.build.outputs.image }}" \
+            --dockerfile app/Dockerfile \
+            --policies "Default vulnerabilities policy - [dmoloney]" \
+            --policies "Default secrets policy" \
+            --policies "Default sensitive data policy" \
+            --policies "Default software license policy"
+
+      - name: Push image to Artifact Registry
+        run: |
+          docker push "${{ steps.build.outputs.image }}"
+          docker push "${{ steps.build.outputs.latest }}"
+
+      # Tag AFTER push — wizcli reads the registry digest to create the
+      # code-to-cloud link: CVE in the running GKE workload → image digest → this commit.
+      # GitHub Actions env vars (GITHUB_SHA, GITHUB_REPOSITORY, etc.) are read
+      # automatically by wizcli for the code stage metadata.
+      - name: Wiz tag image for code-to-cloud mapping
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+        run: |
+          ./wizcli tag "${{ steps.build.outputs.image }}"
+
+      - name: Install gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet 2>/dev/null || sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }}
+
+      - name: Deploy to GKE
+        run: |
+          sed -e "s|IMAGE_PLACEHOLDER|${{ steps.build.outputs.image }}|g" \
+              -e "s|PROJECT_ID_PLACEHOLDER|${{ env.PROJECT_ID }}|g" \
+              kubernetes/deployment.yaml | kubectl apply -f -

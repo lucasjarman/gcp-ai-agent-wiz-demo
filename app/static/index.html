@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>InsightHub Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Unbounded:wght@500;650;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #11110f;
+      --ink-raised: #191916;
+      --paper: #f2efdf;
+      --muted: #9f9d91;
+      --line: #393832;
+      --signal: #d9ff43;
+      --alert: #ff633f;
+      --cool: #84d8ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--paper);
+      background:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+        var(--ink);
+      background-size: 42px 42px;
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .07;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+    }
+
+    button, textarea { font: inherit; }
+
+    .shell {
+      width: min(1500px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      border-inline: 1px solid var(--line);
+      background: rgba(17,17,15,.86);
+      backdrop-filter: blur(10px);
+    }
+
+    header {
+      min-height: 112px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 24px;
+      padding: 22px 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 18px; }
+
+    .mark {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background: var(--signal);
+      font: 800 24px/1 "Unbounded", sans-serif;
+      transform: rotate(-3deg);
+      box-shadow: 5px 5px 0 var(--alert);
+    }
+
+    h1 {
+      margin: 0;
+      font: 650 clamp(20px, 3vw, 34px)/1 "Unbounded", sans-serif;
+      letter-spacing: -.045em;
+    }
+
+    .kicker {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .status-cluster { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: var(--ink-raised);
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .dot.live { background: var(--signal); box-shadow: 0 0 12px var(--signal); }
+    .dot.error { background: var(--alert); }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
+      min-height: calc(100vh - 112px);
+    }
+
+    .conversation {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border-right: 1px solid var(--line);
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 52px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .section-number { color: var(--signal); }
+
+    #messages {
+      overflow-y: auto;
+      max-height: calc(100vh - 335px);
+      padding: 28px;
+      scroll-behavior: smooth;
+    }
+
+    .intro {
+      max-width: 680px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(217,255,67,.09), transparent 55%);
+      animation: arrive .5s ease both;
+    }
+
+    .intro h2 {
+      max-width: 560px;
+      margin: 0 0 16px;
+      font: 650 clamp(26px, 5vw, 52px)/1.03 "Unbounded", sans-serif;
+      letter-spacing: -.06em;
+    }
+
+    .intro p { max-width: 600px; margin: 0; color: var(--muted); line-height: 1.75; font-size: 13px; }
+
+    .prompt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 24px; }
+
+    .prompt {
+      min-height: 92px;
+      padding: 12px;
+      text-align: left;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      background: transparent;
+      cursor: pointer;
+      transition: border-color .2s, transform .2s, background .2s;
+    }
+
+    .prompt:hover { border-color: var(--signal); background: rgba(217,255,67,.06); transform: translateY(-2px); }
+    .prompt span { display: block; margin-bottom: 9px; color: var(--signal); font-size: 9px; letter-spacing: .13em; }
+
+    .message { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 16px; margin: 0 0 26px; animation: arrive .28s ease both; }
+    .message-role { padding-top: 4px; color: var(--muted); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
+    .message.user .message-role { color: var(--cool); }
+    .message.agent .message-role { color: var(--signal); }
+    .message-body { max-width: 760px; white-space: pre-wrap; line-height: 1.7; font-size: 14px; }
+
+    .thinking { display: inline-flex; gap: 7px; padding: 12px 15px; border: 1px solid var(--line); }
+    .thinking i { width: 6px; height: 6px; background: var(--signal); animation: pulse 1s infinite; }
+    .thinking i:nth-child(2) { animation-delay: .15s; }
+    .thinking i:nth-child(3) { animation-delay: .3s; }
+
+    .composer { padding: 18px 24px 24px; border-top: 1px solid var(--line); background: rgba(25,25,22,.92); }
+    .composer-box { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+
+    textarea {
+      width: 100%;
+      min-height: 76px;
+      max-height: 180px;
+      resize: vertical;
+      padding: 15px;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 0;
+      outline: none;
+      background: var(--ink);
+      line-height: 1.55;
+    }
+
+    textarea:focus { border-color: var(--signal); box-shadow: inset 3px 0 0 var(--signal); }
+
+    #send {
+      min-width: 126px;
+      height: 76px;
+      border: 0;
+      color: var(--ink);
+      background: var(--signal);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    #send:hover { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 var(--alert); }
+    #send:disabled { opacity: .45; cursor: wait; transform: none; box-shadow: none; }
+    .composer-note { margin: 10px 0 0; color: var(--muted); font-size: 9px; letter-spacing: .06em; }
+
+    .execution { min-width: 0; background: rgba(13,13,12,.72); }
+    .topology { padding: 22px; border-bottom: 1px solid var(--line); }
+    .topology-line { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--muted); font-size: 10px; }
+    .topology-line:last-child { margin-bottom: 0; }
+    .node { padding: 7px 9px; border: 1px solid var(--line); color: var(--paper); background: var(--ink-raised); }
+    .arrow { color: var(--signal); }
+
+    #trace { padding: 18px; max-height: calc(100vh - 340px); overflow-y: auto; }
+
+    .empty-trace { padding: 24px 8px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+
+    .event { position: relative; margin: 0 0 12px; padding: 14px; border-left: 2px solid var(--cool); background: var(--ink-raised); animation: arrive .25s ease both; }
+    .event.result { border-left-color: var(--signal); }
+    .event-type { margin-bottom: 8px; color: var(--cool); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+    .event.result .event-type { color: var(--signal); }
+    .event-name { margin-bottom: 8px; color: var(--paper); font-size: 12px; font-weight: 600; }
+    .event-data { max-height: 180px; overflow: auto; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; line-height: 1.55; }
+
+    @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes pulse { 0%, 70%, 100% { opacity: .2; } 35% { opacity: 1; } }
+
+    @media (max-width: 900px) {
+      header { grid-template-columns: 1fr; }
+      .status-cluster { justify-content: flex-start; }
+      main { grid-template-columns: 1fr; }
+      .conversation { border-right: 0; }
+      .execution { border-top: 1px solid var(--line); }
+      #messages, #trace { max-height: none; }
+    }
+
+    @media (max-width: 620px) {
+      header { padding: 18px; }
+      .mark { width: 44px; height: 44px; }
+      #messages { padding: 18px; }
+      .intro { padding: 20px; }
+      .prompt-grid { grid-template-columns: 1fr; }
+      .message { grid-template-columns: 1fr; gap: 6px; }
+      .composer { padding: 14px; }
+      .composer-box { grid-template-columns: 1fr; }
+      #send { height: 52px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="mark">IH</div>
+        <div>
+          <h1>InsightHub Agent</h1>
+          <p class="kicker">Synthetic customer intelligence / autonomous tool lab</p>
+        </div>
+      </div>
+      <div class="status-cluster">
+        <div class="badge"><span class="dot" id="api-dot"></span><span id="api-status">checking api</span></div>
+        <div class="badge"><span class="dot live"></span>GKE Autopilot</div>
+        <div class="badge"><span class="dot live"></span>Vertex AI</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="conversation">
+        <div class="section-label"><span><span class="section-number">01</span> / Agent conversation</span><span>Gemini 2.5 Flash</span></div>
+        <div id="messages" aria-live="polite">
+          <div class="intro" id="intro">
+            <h2>Ask the data.<br />Watch the agent act.</h2>
+            <p>InsightHub can search synthetic customer records, execute read-only SQL, and dispatch Python analysis into a locked-down gVisor sandbox. Every tool decision appears in the execution rail.</p>
+            <div class="prompt-grid">
+              <button class="prompt" data-prompt="Find Sarah and summarize her account without showing her payment card."><span>LOOKUP</span>Find and summarize a customer</button>
+              <button class="prompt" data-prompt="Use SQL to rank customer plans by total monthly revenue."><span>SQL</span>Rank plans by revenue</button>
+              <button class="prompt" data-prompt="Search for enterprise customers, then use Python to calculate their average monthly spend."><span>PYTHON</span>Run isolated analysis</button>
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="composer-box">
+            <textarea id="prompt" maxlength="8000" placeholder="Ask InsightHub to investigate the synthetic customer dataset…" aria-label="Message"></textarea>
+            <button id="send">RUN AGENT →</button>
+          </div>
+          <p class="composer-note">ENTER TO SEND · SHIFT+ENTER FOR NEW LINE · DATA IS SYNTHETIC · EXECUTION IS ISOLATED</p>
+        </div>
+      </section>
+
+      <aside class="execution">
+        <div class="section-label"><span><span class="section-number">02</span> / Execution trace</span><span id="step-count">0 steps</span></div>
+        <div class="topology" aria-label="Agent topology">
+          <div class="topology-line"><span class="node">USER</span><span class="arrow">→</span><span class="node">LANGGRAPH</span><span class="arrow">→</span><span class="node">VERTEX</span></div>
+          <div class="topology-line"><span class="node">TOOLS</span><span class="arrow">→</span><span class="node">SQL / GCS</span><span class="arrow">+</span><span class="node">gVISOR</span></div>
+        </div>
+        <div id="trace">
+          <div class="empty-trace">No tool activity yet.<br /><br />Run a prompt to observe model decisions, tool inputs, and bounded execution results.</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const messages = document.getElementById('messages');
+    const trace = document.getElementById('trace');
+    const promptInput = document.getElementById('prompt');
+    const sendButton = document.getElementById('send');
+    const history = [];
+    let stepCount = 0;
+
+    function addMessage(role, content, pending = false) {
+      document.getElementById('intro')?.remove();
+      const item = document.createElement('div');
+      item.className = `message ${role}`;
+
+      const label = document.createElement('div');
+      label.className = 'message-role';
+      label.textContent = role === 'user' ? 'Operator' : 'Agent';
+
+      const body = document.createElement('div');
+      body.className = 'message-body';
+      if (pending) {
+        body.innerHTML = '<span class="thinking" aria-label="Agent working"><i></i><i></i><i></i></span>';
+      } else {
+        body.textContent = content;
+      }
+
+      item.append(label, body);
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+      return item;
+    }
+
+    function renderTrace(events) {
+      if (!events.length) return;
+      trace.querySelector('.empty-trace')?.remove();
+
+      for (const entry of events) {
+        stepCount += 1;
+        const event = document.createElement('div');
+        event.className = `event ${entry.type === 'tool_result' ? 'result' : ''}`;
+
+        const type = document.createElement('div');
+        type.className = 'event-type';
+        type.textContent = entry.type === 'tool_result' ? `Step ${stepCount} / result` : `Step ${stepCount} / tool call`;
+
+        const name = document.createElement('div');
+        name.className = 'event-name';
+        name.textContent = entry.name;
+
+        const data = document.createElement('div');
+        data.className = 'event-data';
+        data.textContent = entry.type === 'tool_result' ? entry.output : JSON.stringify(entry.input, null, 2);
+
+        event.append(type, name, data);
+        trace.appendChild(event);
+      }
+
+      document.getElementById('step-count').textContent = `${stepCount} step${stepCount === 1 ? '' : 's'}`;
+      trace.scrollTop = trace.scrollHeight;
+    }
+
+    async function runAgent(text) {
+      const message = text.trim();
+      if (!message || sendButton.disabled) return;
+
+      promptInput.value = '';
+      addMessage('user', message);
+      const pending = addMessage('agent', '', true);
+      sendButton.disabled = true;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, history: history.slice(-10) }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || 'Agent request failed');
+
+        pending.remove();
+        addMessage('agent', payload.answer);
+        renderTrace(payload.trace || []);
+        history.push({ role: 'user', content: message }, { role: 'assistant', content: payload.answer });
+      } catch (error) {
+        pending.remove();
+        addMessage('agent', `Execution failed: ${error.message}`);
+      } finally {
+        sendButton.disabled = false;
+        promptInput.focus();
+      }
+    }
+
+    sendButton.addEventListener('click', () => runAgent(promptInput.value));
+    promptInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        runAgent(promptInput.value);
+      }
+    });
+    document.querySelectorAll('[data-prompt]').forEach(button => {
+      button.addEventListener('click', () => runAgent(button.dataset.prompt));
+    });
+
+    fetch('/health')
+      .then(response => {
+        if (!response.ok) throw new Error();
+        document.getElementById('api-dot').className = 'dot live';
+        document.getElementById('api-status').textContent = 'api online';
+      })
+      .catch(() => {
+        document.getElementById('api-dot').className = 'dot error';
+        document.getElementById('api-status').textContent = 'api offline';
+      });
+  </script>
+</body>
+</html>
