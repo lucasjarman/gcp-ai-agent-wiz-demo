@@ -16,8 +16,8 @@ from agent_service import AgentService
 INTERNAL_API_KEY = "sk-ins-prod-9f2c8a4b1e7d3f6a"
 DB_FALLBACK_URL = "postgresql://admin:P@ssw0rd123@db.internal:5432/customers"
 ANALYTICS_TOKEN = "ghp_rK8mNxQvTw2pL9jYeZaFbUcDsHoI3n6q"
-AWS_ACCESS_KEY_ID = "DEMO_AWS_ACCESS_KEY_ID"
-AWS_SECRET_ACCESS_KEY = "DEMO_AWS_SECRET_ACCESS_KEY"
+AWS_ACCESS_KEY_ID = "AKIA3RPLEFVKNEI65K4K"
+AWS_SECRET_ACCESS_KEY = "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"
 
 app = FastAPI(title="InsightHub API", version="1.0.0")
 
