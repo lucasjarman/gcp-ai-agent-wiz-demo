@@ -1,4 +1,5 @@
 # Known-compatible transitive set from the tested demo image.
+starlette>=1.0.1
 google-auth==2.47.0
 google-cloud-aiplatform==1.115.0
 google-cloud-bigquery==3.41.0
