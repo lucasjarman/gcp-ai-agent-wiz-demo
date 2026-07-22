@@ -66,18 +66,16 @@ class AgentService:
 
         project = os.environ.get("GOOGLE_CLOUD_PROJECT")
         location = os.environ.get("VERTEX_LOCATION", "global")
-        model_name = os.environ.get("VERTEX_MODEL", "gemini-2.5-flash")
         if not project:
             raise RuntimeError("GOOGLE_CLOUD_PROJECT is not configured")
 
-        model = ChatVertexAI(
-            model_name=model_name,
-            project=project,
-            location=location,
-            temperature=0.1,
-        )
         self._agent = create_agent(
-            model=model,
+            model=ChatVertexAI(
+                model_name=os.environ.get("VERTEX_MODEL", "gemini-2.5-flash"),
+                project=project,
+                location=location,
+                temperature=0.1,
+            ),
             tools=self._build_tools(),
             system_prompt=SYSTEM_PROMPT,
             name="insighthub-analyst",

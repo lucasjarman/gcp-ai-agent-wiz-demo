@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from unittest.mock import patch
 
 from langchain_core.messages import AIMessage, ToolMessage
 
@@ -76,6 +77,26 @@ def test_system_prompt_contains_exact_customer_schema():
     assert "monthly_spend REAL" in CUSTOMER_SCHEMA
     assert CUSTOMER_SCHEMA in SYSTEM_PROMPT
     assert "Do not invent column names" in SYSTEM_PROMPT
+
+
+def test_agent_uses_configured_vertex_model(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+    monkeypatch.setenv("VERTEX_LOCATION", "test-location")
+    monkeypatch.setenv("VERTEX_MODEL", "test-model")
+    service = AgentService(database_factory)
+
+    with patch("agent_service.ChatVertexAI") as chat_vertex, patch(
+        "agent_service.create_agent"
+    ) as create_agent:
+        service._get_agent()
+
+    chat_vertex.assert_called_once_with(
+        model_name="test-model",
+        project="test-project",
+        location="test-location",
+        temperature=0.1,
+    )
+    assert create_agent.call_args.kwargs["model"] is chat_vertex.return_value
 
 
 def test_search_tool_caps_results():
