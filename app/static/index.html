@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>InsightHub Agent</title>
+  <link rel="service-desc" type="application/vnd.oai.openapi+json" href="/openapi.json" title="InsightHub OpenAPI description" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Unbounded:wght@500;650;800&display=swap" rel="stylesheet" />
@@ -105,6 +106,10 @@
       letter-spacing: .1em;
       text-transform: uppercase;
     }
+
+    .badge-link { text-decoration: none; transition: color .2s, border-color .2s, transform .2s; }
+    .badge-link:hover { color: var(--signal); border-color: var(--signal); transform: translateY(-2px); }
+    .badge-link:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
 
     .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
     .dot.live { background: var(--signal); box-shadow: 0 0 12px var(--signal); }
@@ -280,6 +285,7 @@
         <div class="badge"><span class="dot" id="api-dot"></span><span id="api-status">checking api</span></div>
         <div class="badge"><span class="dot live"></span>GKE Autopilot</div>
         <div class="badge"><span class="dot live"></span>Vertex AI</div>
+        <a class="badge badge-link" href="/docs" target="_blank" rel="noopener noreferrer">API Docs ↗</a>
       </div>
     </header>
 
