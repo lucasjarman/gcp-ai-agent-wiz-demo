@@ -71,7 +71,7 @@ def _seed_database(conn: sqlite3.Connection):
             ssn TEXT,
             credit_card TEXT,
             credit_card_expiry TEXT,
-            plan TEXT,
+            plan TEXT COLLATE NOCASE,
             monthly_spend REAL,
             created_at TEXT
         )

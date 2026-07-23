@@ -11,7 +11,7 @@ def database_factory():
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
     connection.execute(
-        "CREATE TABLE customers (id INTEGER, first_name TEXT, last_name TEXT, email TEXT, plan TEXT, monthly_spend REAL)"
+        "CREATE TABLE customers (id INTEGER, first_name TEXT, last_name TEXT, email TEXT, plan TEXT COLLATE NOCASE, monthly_spend REAL)"
     )
     connection.executemany(
         "INSERT INTO customers VALUES (?, ?, ?, ?, ?, ?)",
@@ -73,6 +73,17 @@ def test_sql_tool_ranks_plans_by_monthly_spend():
     ]
 
 
+def test_sql_tool_filters_plans_case_insensitively():
+    service = AgentService(database_factory)
+    sql_tool = next(item for item in service._build_tools() if item.name == "run_customer_sql")
+
+    result = sql_tool.invoke(
+        {"query": "SELECT first_name, monthly_spend FROM customers WHERE plan = 'enterprise'"}
+    )
+
+    assert json.loads(result) == [{"first_name": "Sarah", "monthly_spend": 4200.0}]
+
+
 def test_system_prompt_contains_exact_customer_schema():
     assert "monthly_spend REAL" in CUSTOMER_SCHEMA
     assert CUSTOMER_SCHEMA in SYSTEM_PROMPT
@@ -107,6 +118,15 @@ def test_search_tool_caps_results():
 
     assert "Sarah" in result
     assert "James" in result
+
+
+def test_search_tool_finds_customers_by_plan():
+    service = AgentService(database_factory)
+    search_tool = next(item for item in service._build_tools() if item.name == "search_customers")
+
+    result = search_tool.invoke({"search_term": "enterprise"})
+
+    assert json.loads(result)[0]["first_name"] == "Sarah"
 
 
 def test_trace_contains_tool_call_and_result():

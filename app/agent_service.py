@@ -21,7 +21,7 @@ CUSTOMER_SCHEMA = """customers (
   ssn TEXT,
   credit_card TEXT,
   credit_card_expiry TEXT,
-  plan TEXT,
+  plan TEXT COLLATE NOCASE,
   monthly_spend REAL,
   created_at TEXT
 )"""
@@ -88,16 +88,16 @@ class AgentService:
 
         @tool("search_customers")
         def search_customers(search_term: str, max_results: int = 5) -> str:
-            """Search the synthetic customer dataset by name or email."""
+            """Search the synthetic customer dataset by name, email, or plan."""
             limit = max(1, min(max_results, 10))
             like_value = f"%{search_term}%"
             rows = database_factory().execute(
                 """
                 SELECT * FROM customers
-                WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ?
+                WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR plan LIKE ?
                 LIMIT ?
                 """,
-                (like_value, like_value, like_value, limit),
+                (like_value, like_value, like_value, like_value, limit),
             ).fetchall()
             return json.dumps([dict(row) for row in rows])
 
