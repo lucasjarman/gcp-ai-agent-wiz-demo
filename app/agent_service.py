@@ -87,7 +87,7 @@ class AgentService:
         executor = self.executor
 
         @tool("search_customers")
-        def search_customers(search_term: str, max_results: int = 5) -> str:
+        def search_customers(search_term: str, max_results: int = 10) -> str:
             """Search the synthetic customer dataset by name, email, or plan."""
             limit = max(1, min(max_results, 10))
             like_value = f"%{search_term}%"

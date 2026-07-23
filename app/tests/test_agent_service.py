@@ -129,6 +129,27 @@ def test_search_tool_finds_customers_by_plan():
     assert json.loads(result)[0]["first_name"] == "Sarah"
 
 
+def test_search_tool_returns_all_six_enterprise_customers_by_default():
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    connection.execute(
+        "CREATE TABLE customers (id INTEGER, first_name TEXT, last_name TEXT, email TEXT, plan TEXT COLLATE NOCASE)"
+    )
+    connection.executemany(
+        "INSERT INTO customers VALUES (?, ?, ?, ?, ?)",
+        [
+            (customer_id, f"Customer{customer_id}", "Example", "customer@example.test", "Enterprise")
+            for customer_id in range(1, 7)
+        ],
+    )
+    service = AgentService(lambda: connection)
+    search_tool = next(item for item in service._build_tools() if item.name == "search_customers")
+
+    result = search_tool.invoke({"search_term": "enterprise"})
+
+    assert len(json.loads(result)) == 6
+
+
 def test_trace_contains_tool_call_and_result():
     messages = [
         AIMessage(
