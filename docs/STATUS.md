@@ -11,12 +11,19 @@ Last updated: 2026-07-23 (Australia/Melbourne)
 - Cloudflare permits the approved home address and Wiz scanners. The GKE origin
   separately permits Cloudflare origin ranges.
 - The Wiz Runtime Sensor is active and sending workload telemetry.
+- Python analysis runs as a bounded non-root child process of the agent so Wiz
+  Runtime Sensor events retain the AI-classified container, pod, identity, and
+  exposure context. The child uses a stripped environment, restricted Python
+  syntax and imports, Linux resource limits, dropped capabilities, and a wall-
+  clock timeout. It intentionally shares the agent pod's network namespace and
+  GCP workload identity for this controlled demo.
 - GitHub Actions provides source and image scanning, commit-SHA image tagging,
   code-to-cloud tagging, deployment, and live smoke testing.
 
 ## Current Wiz observations
 
-Verified through Wiz MCP on 2026-07-23:
+Wiz-side observations were verified through Wiz MCP on 2026-07-23; the GCP
+pipeline state below was also verified directly in GCP:
 
 - The GCP account `lucas-ai-agent-demo` is connected through the healthy,
   enabled folder connector `lucasj-argolis-folder`.
@@ -35,13 +42,18 @@ Verified through Wiz MCP on 2026-07-23:
   exports Admin Activity logs from child projects, including this one, to the
   Google-managed `sst-multiorg-139824078319` Pub/Sub project. Preserve this
   pipeline unchanged.
-- The live sink filter does not currently include Data Access logs, despite the
-  older SecOps workspace note saying it did. The project IAM policy has no
-  explicit audit configuration, and no Cloud Storage Data Access events were
-  present in the preceding seven days.
-- GKE audit events are being generated locally in GCP under the Admin Activity
-  log. The application project has no non-default log sink, Pub/Sub topic, or
-  Pub/Sub subscription.
+- The organization SecOps sink filter does not currently include Data Access
+  logs, despite the older SecOps workspace note saying it did. This pipeline
+  remains unchanged.
+- The application project now has a separate Terraform-managed Wiz export:
+  `wiz-export-project-pubsub`, topic `wiz-export-audit-logs`, and subscription
+  `wiz-export-audit-logs-sub`. The Wiz connector is not consuming it until
+  Cloud Events Integration is enabled in the portal.
+- Cloud Storage `ADMIN_READ`, `DATA_READ`, and `DATA_WRITE` audit logging is
+  enabled at project scope. A benign `storage.objects.get` by the dev identity
+  was verified in both Cloud Audit Logs and the Wiz Pub/Sub subscription.
+- GKE audit events are being generated locally in GCP and the Wiz project sink
+  includes them using Wiz's documented filter and noise exclusions.
 - API Security currently shows five Runtime Sensor-discovered endpoints. Red
   Agent successfully ran API DAST and produced two open AI-powered findings on
   `/api/customers`: a Critical SQL/NoSQL injection and High unrestricted access
@@ -56,12 +68,13 @@ Preserve the SecOps design when adding Wiz ingestion.
 
 - GCP generates Admin Activity logs automatically for projects in the
   organization.
-- Data Access logs are opt-in. They are not enabled at organization or folder
-  scope and are not enabled for `lucas-ai-agent-demo`, `secops-lucasjarman`, or
-  `lucas-argolis-bootstrap-1`.
+- Data Access logs are opt-in and are not enabled at organization or folder
+  scope. `lucas-ai-agent-demo` selectively enables them for Cloud Storage;
+  `secops-lucasjarman` and `lucas-argolis-bootstrap-1` do not enable them.
 - `wiz-attack-sim` explicitly enables `ADMIN_READ`, `DATA_READ`, and
   `DATA_WRITE` for `allServices` in its project IAM `auditConfigs`. It is the
-  only project currently configured to generate broad Data Access logs.
+  only project currently configured to generate broad, all-services Data
+  Access logs.
 - `lucas-argolis-bootstrap-1` has the `secops-dns-logging` DNS policy attached
   to the `argolis-net` VPC, causing DNS query logs to be generated there.
 
@@ -125,40 +138,31 @@ the initial Wiz Defend pipeline. Consider those sources later only for a demo
 that specifically needs cloud-network-plane visibility beyond Sensor-observed
 workload activity.
 
-### Phase 1: provision the GCP pipeline as code
+### Phase 1: provision the GCP pipeline as code — complete
 
-1. Add the Wiz GCP cloud-events Terraform configuration to this repository.
-   Use project scope, the existing connector's Wiz-managed identity, a dedicated
-   Wiz Pub/Sub topic and subscription in the same project, and at least 24 hours
-   of message retention.
-2. Add a separate Wiz sink with the Wiz Defend log-source filter so it includes
-   GCP Admin Activity, GKE audit events, and supported Data Access events, while
-   retaining Wiz's documented noise exclusions.
-3. Explicitly enable Cloud Storage Data Access audit logging if bucket-access
-   telemetry is part of the demo. Routing `data_access` in a sink does not make
-   Storage emit logs when the project audit configuration is absent.
-4. Add outputs for the topic name and subscription ID required by the Wiz
-   connector.
-5. Keep the implementation visible in this repository. Prefer vendoring the
-   official module or using explicit Terraform resources over hiding the
-   resource definitions behind an unpinned remote archive; confirm the final
-   choice before implementation because it affects maintenance and Wiz IaC
-   source mapping.
+Applied on 2026-07-23 using explicit Terraform resources for direct IaC and
+code-to-cloud visibility:
 
-Verification before apply:
+- project sink `wiz-export-project-pubsub` with the documented Wiz Defend
+  inclusion filter and six noise exclusions;
+- topic `projects/lucas-ai-agent-demo/topics/wiz-export-audit-logs` and
+  subscription `wiz-export-audit-logs-sub`, both with 24-hour retention and no
+  subscription expiry;
+- `roles/pubsub.publisher` for the unique Logs Router writer and
+  `roles/pubsub.subscriber` for the existing Wiz-managed identity; and
+- Cloud Storage `ADMIN_READ`, `DATA_READ`, and `DATA_WRITE` audit logging.
 
-- `terraform -chdir=terraform fmt -check`
-- `terraform -chdir=terraform validate`
-- Review the plan for project-only scope, the expected sink, topic,
-  subscription, IAM bindings, and no unrelated resource replacement.
+Terraform applied 6 additions, 0 changes, and 0 destroys. A post-apply plan
+reported no changes. A benign synthetic-bucket read was observed in both Cloud
+Audit Logs and the new subscription.
 
 ### Phase 2: connect Wiz
 
 Edit the existing `lucasj-argolis-folder` connector in Wiz, enable Cloud Events
 Integration with the Manual deployment method, and enter the Terraform outputs:
 
-- Topic: `projects/lucas-ai-agent-demo/topics/<topic-name>`
-- Subscription ID: `<subscription-id>`
+- Topic: `projects/lucas-ai-agent-demo/topics/wiz-export-audit-logs`
+- Subscription ID: `wiz-export-audit-logs-sub`
 
 This is a Wiz-side configuration step; creating the GCP resources alone does
 not start ingestion.
@@ -178,10 +182,8 @@ not start ingestion.
 
 ## Follow-on options
 
-- Enable GCS Data Access audit logging deliberately if the demo should show
-  reads from the synthetic customer-data bucket, then measure the added volume.
-  It is not currently configured and the organization SecOps sink does not
-  currently route Data Access logs.
+- Review Cloud Storage Data Access volume after 24 hours before enabling audit
+  logging for any additional GCP services or projects.
 - Add Vertex AI request-response log ingestion later. It is a separate private-
   preview pipeline using BigQuery and Pub/Sub, not part of the base GCP Audit
   Logs setup.
@@ -192,10 +194,8 @@ not start ingestion.
 - Add a System Health Issue automation after the pipeline is stable so stopped
   or misconfigured ingestion becomes visible without manual checks.
 
-## Success criteria for the next implementation
+## Remaining success criteria
 
-- The Terraform plan contains only the intended logging, Pub/Sub, and IAM
-  resources.
 - The existing GCP connector remains healthy and has Cloud Events Integration
   enabled.
 - New GCP and GKE audit events appear in Wiz for `lucas-ai-agent-demo`.

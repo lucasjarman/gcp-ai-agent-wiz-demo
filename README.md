@@ -10,7 +10,7 @@ The live application is an AI customer-data analyst at [agent.ljarman.dev](https
 Cloudflare WAF
   -> GKE Autopilot / FastAPI agent
        -> customer-data tools
-       -> isolated gVisor execution Jobs
+       -> bounded Python child processes visible to the Wiz Runtime Sensor
   -> GCP service account and synthetic customer-data bucket
 
 GitHub Actions
@@ -18,6 +18,11 @@ GitHub Actions
   -> Artifact Registry
   -> wizcli image tag for code-to-cloud mapping
   -> GKE deployment
+
+GCP Audit Logs
+  -> project-scoped Logs Router sink
+  -> dedicated Pub/Sub topic and subscription
+  -> Wiz Defend cloud events (after connector enablement)
 ```
 
 Infrastructure is defined in `terraform/`, and Kubernetes application controls are in `kubernetes/deployment.yaml`. Terraform uses a committed GCS backend declaration so Wiz can correlate source declarations, Terraform state, and live GCP resources.

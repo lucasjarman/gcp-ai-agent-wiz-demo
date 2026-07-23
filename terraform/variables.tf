@@ -32,3 +32,9 @@ variable "region" {
   type        = string
   default     = "australia-southeast1"
 }
+
+variable "wiz_managed_service_account" {
+  description = "Wiz-managed service account that consumes the audit-log subscription"
+  type        = string
+  default     = "wizfe70947d83370744c817c10f340@prod-us36.iam.gserviceaccount.com"
+}

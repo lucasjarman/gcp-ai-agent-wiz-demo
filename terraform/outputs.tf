@@ -27,3 +27,13 @@ output "workload_identity_provider" {
   description = "Workload identity provider used by GitHub Actions"
   value       = google_iam_workload_identity_pool_provider.github.name
 }
+
+output "wiz_audit_logs_subscription_id" {
+  description = "Pub/Sub subscription ID to configure on the Wiz GCP connector"
+  value       = google_pubsub_subscription.wiz_audit_logs.name
+}
+
+output "wiz_audit_logs_topic" {
+  description = "Fully qualified Pub/Sub topic to configure on the Wiz GCP connector"
+  value       = google_pubsub_topic.wiz_audit_logs.id
+}
