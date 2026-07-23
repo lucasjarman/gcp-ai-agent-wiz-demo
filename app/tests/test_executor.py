@@ -1,16 +1,57 @@
-from executor import IsolatedExecutor
+import subprocess
+from unittest.mock import patch
+
+from executor import BoundedPythonExecutor
 
 
-def test_job_manifest_isolated(monkeypatch):
-    monkeypatch.setenv("EXECUTOR_IMAGE", "example.test/agent:latest")
-    executor = IsolatedExecutor()
+def test_executor_runs_analysis_in_child_process(monkeypatch):
+    monkeypatch.setenv("EXECUTOR_ENABLED", "true")
+    executor = BoundedPythonExecutor()
 
-    manifest = executor.build_job_manifest("agent-exec-test", "sum([1, 2])", [])
-    pod_spec = manifest["spec"]["template"]["spec"]
-    container = pod_spec["containers"][0]
+    result = executor.run_python("sum(item['value'] for item in data)", [{"value": 2}, {"value": 3}])
 
-    assert pod_spec["automountServiceAccountToken"] is False
-    assert pod_spec["runtimeClassName"] == "gvisor"
-    assert manifest["spec"]["activeDeadlineSeconds"] == 85
-    assert container["securityContext"]["readOnlyRootFilesystem"] is True
-    assert container["securityContext"]["capabilities"]["drop"] == ["ALL"]
+    assert result == "5"
+
+
+def test_executor_is_disabled_by_default():
+    executor = BoundedPythonExecutor()
+
+    assert executor.run_python("1 + 1") == "The bounded Python executor is disabled in this environment."
+
+
+def test_executor_uses_limits_and_stripped_environment(monkeypatch):
+    monkeypatch.setenv("EXECUTOR_ENABLED", "true")
+    monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/secret/credentials.json")
+    executor = BoundedPythonExecutor()
+
+    with patch("executor.subprocess.run") as run:
+        run.return_value.returncode = 0
+        executor.run_python("1 + 1")
+
+    command = run.call_args.args[0]
+    child_env = run.call_args.kwargs["env"]
+    assert command[:2] == ["/usr/bin/prlimit", "--cpu=5"]
+    assert "/usr/bin/setpriv" in command
+    assert "--no-new-privs" in command
+    assert "GOOGLE_APPLICATION_CREDENTIALS" not in child_env
+    assert set(child_env) == {
+        "HOME",
+        "PYTHONDONTWRITEBYTECODE",
+        "PYTHONNOUSERSITE",
+        "PYTHON_CODE_B64",
+        "PYTHON_DATA_B64",
+        "TMPDIR",
+    }
+
+
+def test_executor_enforces_wall_clock_timeout(monkeypatch):
+    monkeypatch.setenv("EXECUTOR_ENABLED", "true")
+    executor = BoundedPythonExecutor()
+
+    with patch(
+        "executor.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd="python", timeout=executor.timeout_seconds),
+    ):
+        result = executor.run_python("while True: pass")
+
+    assert result == "The bounded Python execution exceeded its time limit."

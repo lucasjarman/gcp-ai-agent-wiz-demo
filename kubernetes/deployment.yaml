@@ -4,68 +4,12 @@ metadata:
   name: ai-dlc-demo
 ---
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: ai-agent-exec
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ai-dlc-demo
   namespace: ai-dlc-demo
   annotations:
     iam.gke.io/gcp-service-account: ai-dlc-demo-sa@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: executor
-  namespace: ai-agent-exec
-automountServiceAccountToken: false
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: execution-job-manager
-  namespace: ai-agent-exec
-rules:
-  - apiGroups: ["batch"]
-    resources: ["jobs"]
-    verbs: ["create", "get", "list", "delete"]
-  - apiGroups: ["batch"]
-    resources: ["jobs/status"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["pods/log"]
-    verbs: ["get"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: agent-execution-job-manager
-  namespace: ai-agent-exec
-subjects:
-  - kind: ServiceAccount
-    name: ai-dlc-demo
-    namespace: ai-dlc-demo
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: execution-job-manager
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: deny-executor-network
-  namespace: ai-agent-exec
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -95,10 +39,6 @@ spec:
               value: PROJECT_ID_PLACEHOLDER-customer-data
             - name: EXECUTOR_ENABLED
               value: "true"
-            - name: EXECUTOR_IMAGE
-              value: IMAGE_PLACEHOLDER
-            - name: EXECUTOR_NAMESPACE
-              value: ai-agent-exec
             - name: EXECUTOR_TIMEOUT_SECONDS
               value: "90"
             - name: GOOGLE_CLOUD_PROJECT

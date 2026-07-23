@@ -24,7 +24,8 @@ user's approval first.
 - GKE Autopilot cluster and namespace: `ai-dlc-demo`
 - Application: FastAPI and a LangChain agent using Vertex AI Gemini
 - Tools: customer search, read-only customer SQL, and bounded Python execution
-- Isolation: Python jobs use the gVisor `RuntimeClass`
+- Execution: Python analysis runs as a resource-limited, non-root child process
+  so Runtime Sensor events retain the AI workload's container context
 - Edge: Cloudflare permits the user's approved IPs and Wiz scanners
 - Origin: Kubernetes network policy permits only Cloudflare origin ranges
 - Delivery: GitHub Actions builds, tests, scans, pushes, tags, deploys, and
@@ -34,7 +35,7 @@ user's approval first.
 
 - `app/`: application, static frontend, container definition, and tests
 - `terraform/`: GCP infrastructure and the committed remote-state declaration
-- `kubernetes/deployment.yaml`: application and execution-job controls
+- `kubernetes/deployment.yaml`: application workload and network controls
 - `.github/workflows/deploy.yml`: CI, Wiz scans, code-to-cloud tagging, deploy,
   and live smoke test
 - `README.md`: concise architecture, validation, and demo-safety overview
@@ -101,7 +102,7 @@ is not sufficient for an agent change.
   credential finding. Do not reproduce its value or remove/rotate it unless the
   user explicitly asks.
 - Do not weaken the Cloudflare allowlist, the Kubernetes Cloudflare-only origin
-  policy, or the gVisor execution boundary without explicit approval.
+  policy, or the bounded Python execution controls without explicit approval.
 
 ## Wiz and code-to-cloud constraints
 

@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_vertexai import ChatVertexAI
 
-from executor import IsolatedExecutor
+from executor import BoundedPythonExecutor
 
 
 CUSTOMER_SCHEMA = """customers (
@@ -44,7 +44,7 @@ If a tool returns a query error, use the available-column guidance to correct th
 class AgentService:
     def __init__(self, database_factory: Callable):
         self.database_factory = database_factory
-        self.executor = IsolatedExecutor()
+        self.executor = BoundedPythonExecutor()
         self._agent = None
 
     async def chat(self, message: str, history: list[dict]) -> dict:
@@ -128,7 +128,7 @@ class AgentService:
 
         @tool("run_python_analysis")
         def run_python_analysis(code: str, data: list[dict] | None = None) -> str:
-            """Run Python analysis in an isolated, network-blocked gVisor job."""
+            """Run Python analysis in a bounded child process."""
             return executor.run_python(code, data)
 
         return [search_customers, run_customer_sql, run_python_analysis]
