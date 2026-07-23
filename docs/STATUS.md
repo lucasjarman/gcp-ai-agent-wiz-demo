@@ -19,6 +19,12 @@ Last updated: 2026-07-23 (Australia/Melbourne)
   GCP workload identity for this controlled demo.
 - GitHub Actions provides source and image scanning, commit-SHA image tagging,
   code-to-cloud tagging, deployment, and live smoke testing.
+- Commit `67fdd3eafd48605807d1c98362064e98bbde110d` is deployed as Artifact
+  Registry digest `sha256:1d03275d05ca15660c80d2188a9e3db51d9bc435b2105e73ada9b49b0ef3e7ee`.
+  The GKE Deployment is 1/1 ready, health and SQL smoke tests pass, and the live
+  enterprise-analysis prompt finds all six matching customers, invokes bounded
+  Python, and returns the correct `6083.33` average. The retired
+  `ai-agent-exec` namespace and its old gVisor Job controls were deleted.
 
 ## Current Wiz observations
 
@@ -27,14 +33,19 @@ pipeline state below was also verified directly in GCP:
 
 - The GCP account `lucas-ai-agent-demo` is connected through the healthy,
   enabled folder connector `lucasj-argolis-folder`.
-- The connector has Cloud Events Integration disabled:
-  `auditLogMonitorEnabled=false` and no audit-log configuration is present.
+- Cloud Events Integration is enabled on that connector. It reports
+  `auditLogMonitorEnabled=true` and references topic
+  `projects/lucas-ai-agent-demo/topics/wiz-export-audit-logs` and subscription
+  `wiz-export-audit-logs-sub`, with no connector health issues.
 - The Wiz Defend Ingestion license is active through 2026-12-31 and currently
   reports zero ingestion units used.
-- No `GCP_AUDIT_LOGS` or `GCP_GKE_AUDIT_LOGS` events were present for this
-  project in the preceding 30 days.
 - Runtime Sensor events are flowing. These are a separate telemetry source and
   do not replace GCP control-plane or GKE audit logs.
+- Recent Sensor detections on the main app container include both `AI Agent
+  Module` and `AI Workload` signals and are attributed to the `ai-dlc-demo`
+  Deployment. Raw `RUNTIME_EXECUTION_DATA` for the short-lived
+  `sandbox_runner.py` child has not appeared, so per-tool child-process
+  attribution remains unverified.
 - The tenant has 162 enabled rules that can consume GCP Audit Logs and 70
   enabled rules that can consume GKE Audit Logs.
 - Live GCP verification found the organization-level Google SecOps SST sink
@@ -45,10 +56,9 @@ pipeline state below was also verified directly in GCP:
 - The organization SecOps sink filter does not currently include Data Access
   logs, despite the older SecOps workspace note saying it did. This pipeline
   remains unchanged.
-- The application project now has a separate Terraform-managed Wiz export:
+- The application project has a separate Terraform-managed Wiz export:
   `wiz-export-project-pubsub`, topic `wiz-export-audit-logs`, and subscription
-  `wiz-export-audit-logs-sub`. The Wiz connector is not consuming it until
-  Cloud Events Integration is enabled in the portal.
+  `wiz-export-audit-logs-sub`. The connector is configured to consume it.
 - Cloud Storage `ADMIN_READ`, `DATA_READ`, and `DATA_WRITE` audit logging is
   enabled at project scope. A benign `storage.objects.get` by the dev identity
   was verified in both Cloud Audit Logs and the Wiz Pub/Sub subscription.
@@ -58,6 +68,13 @@ pipeline state below was also verified directly in GCP:
   Agent successfully ran API DAST and produced two open AI-powered findings on
   `/api/customers`: a Critical SQL/NoSQL injection and High unrestricted access
   to synthetic customer PII and financial data.
+- Wiz discovers the `ai-dlc-demo` GAR registry, repository, and images. The
+  connector inherits the registry-scanning extension role, including
+  `artifactregistry.repositories.downloadArtifacts`, and has no health issue.
+  Matching images have Build and Runtime lifecycle stages but none has Store.
+  This is consistent with registry scanning not being set to **All Images**;
+  only All Images scans populate Store. Confirm or override the registry's scan
+  mode under Inventory > Container Registries > Edit Scan Settings.
 
 ## Existing centralized SecOps logging design
 
@@ -156,28 +173,23 @@ Terraform applied 6 additions, 0 changes, and 0 destroys. A post-apply plan
 reported no changes. A benign synthetic-bucket read was observed in both Cloud
 Audit Logs and the new subscription.
 
-### Phase 2: connect Wiz
+### Phase 2: connect Wiz — complete
 
-Edit the existing `lucasj-argolis-folder` connector in Wiz, enable Cloud Events
-Integration with the Manual deployment method, and enter the Terraform outputs:
+The existing `lucasj-argolis-folder` connector has Cloud Events Integration
+enabled using the Terraform outputs:
 
 - Topic: `projects/lucas-ai-agent-demo/topics/wiz-export-audit-logs`
 - Subscription ID: `wiz-export-audit-logs-sub`
 
-This is a Wiz-side configuration step; creating the GCP resources alone does
-not start ingestion.
+### Phase 3: validate ingestion — in progress
 
-### Phase 3: validate ingestion
-
-1. Confirm the connector reports `auditLogMonitorEnabled=true`, a populated
-   audit-log configuration, and no new connector health issue.
-2. Generate a small, benign set of project control-plane, GKE API, and synthetic
+1. Generate a small, benign set of project control-plane, GKE API, and synthetic
    customer-data bucket events.
-3. Confirm Wiz receives events with origins `GCP_AUDIT_LOGS` and
+2. Confirm Wiz receives events with origins `GCP_AUDIT_LOGS` and
    `GCP_GKE_AUDIT_LOGS`, with the correct actor and resource correlation.
-4. Confirm at least one enabled detection rule evaluates the new source. A
+3. Confirm at least one enabled detection rule evaluates the new source. A
    deliberate attack simulation is a separate, explicitly approved step.
-5. Check Pub/Sub backlog and GCP logging/Pub/Sub volume after 24 hours before
+4. Check Pub/Sub backlog and GCP logging/Pub/Sub volume after 24 hours before
    broadening scope.
 
 ## Follow-on options
@@ -196,8 +208,7 @@ not start ingestion.
 
 ## Remaining success criteria
 
-- The existing GCP connector remains healthy and has Cloud Events Integration
-  enabled.
 - New GCP and GKE audit events appear in Wiz for `lucas-ai-agent-demo`.
-- Runtime Sensor events continue to flow and the application remains healthy.
+- Fresh runtime telemetry confirms `sandbox_runner.py` is attributed to the
+  main `ai-dlc-demo` workload after the 2026-07-23 deployment.
 - No folder-wide logging or new attack simulation is introduced implicitly.
