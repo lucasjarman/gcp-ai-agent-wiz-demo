@@ -64,6 +64,23 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   AI-agent context; the existing fixed `gcloud` actions then generate Sensor
   rules 527/528 and real GCP key lifecycle audit events on the same workload
   and identity path.
+- Commit `a2e1650b71c1f2dbb7a2c2fb3b7f8e7d47bb489b` deployed successfully in
+  GitHub Actions run `30064488054`; build, 25 image tests, both Wiz scans,
+  image push/tagging, GKE rollout, and the live agent smoke test passed.
+- Live run `025c6bcb-8f28-4c5b-ab60-5591e55eb58f` completed at
+  `2026-07-24T03:42:32Z`. Native Sensor rule 265 created Critical threat
+  `f727c9ec-7316-5be4-8ac9-7e012715d042` with detection
+  `1bdc944a-4c70-5c96-95ba-afdba6ff5e0e`.
+- The threat is enriched with `AI Workload`, `AI Agent Module Descendant`,
+  `Publicly Exposed Workload`, and `Mature Workload` signals. Its context
+  timeline stitches together the token-read evidence, Sensor rules 527/528,
+  IMDS access, and successful GCP `ListServiceAccounts`,
+  `CreateServiceAccountKey`, and `DeleteServiceAccountKey` events from the app
+  GSA. This achieves the cross-origin demo with native rules and graph context;
+  no custom TDR is required.
+- The create event occurred at `03:42:29.709Z` and the delete at
+  `03:42:32.694Z`. The canary has zero user-managed keys after validation, and
+  the original Kubernetes scenario digests were restored.
 
 ## Current deployment
 

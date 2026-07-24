@@ -109,6 +109,11 @@ GSA, and AI-workload context in Wiz. Built-in correlation 90 is not used as a
 success criterion: its current matcher selects a legacy Sensor raw field that
 is absent from the tenant's current Sensor event schema.
 
+Validated on 2026-07-24: run `025c6bcb-8f28-4c5b-ab60-5591e55eb58f`
+created Critical threat `f727c9ec-7316-5be4-8ac9-7e012715d042`. The threat's
+context timeline includes both Sensor activity and the matching GCP key-create
+and key-delete audit events.
+
 ### Canary Architecture
 
 Create one service account in `lucas-ai-agent-demo`:
