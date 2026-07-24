@@ -36,7 +36,18 @@ Last updated: 2026-07-24 (Australia/Melbourne)
 - The corrected trigger uses each role-less canary for a fixed IAM read. It
   accepts either success or the exact expected `iam.serviceAccounts.get`
   denial, creating delegated API activity without granting access to data.
-  End-to-end rule-93 validation remains in progress.
+- Commit `04ef1ab5654fdb2ca5725cba526d6cf29bb2686c` deployed successfully in
+  GitHub Actions run `30058655926`; all build, test, Wiz scan, code-to-cloud,
+  GKE rollout, and live smoke-test steps passed.
+- Live run `eb41e0ef-8748-49b5-9d7f-f3e3eee45246` completed at
+  `2026-07-24T01:26:45Z`. Wiz ingested Sensor 527/529 events from the app
+  container and three GCP IAM events with the app GSA as actor and three
+  distinct canaries as `actingAs`.
+- Rule-93 promotion is blocked by enabled tenant IGNORE rule `test-konrad`
+  (`9b4189f5-ac81-4205-b791-01230f3f9073`). It targets Runtime Threat
+  Detection Issues with no project, resource, or TDR scope and reports 149
+  ignored threat issues. Do not disable it without tenant-owner approval;
+  scope or disable it before the next trigger.
 
 ## Current deployment
 
