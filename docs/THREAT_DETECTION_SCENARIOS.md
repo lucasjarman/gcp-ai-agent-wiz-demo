@@ -117,7 +117,9 @@ Create one service account in `lucas-ai-agent-demo`:
 
 The identity has no project or resource roles. The application GSA receives
 `roles/iam.serviceAccountKeyAdmin` only on that identity. Admin Activity logs
-record the key lifecycle and the existing project sink routes them to Wiz.
+record the key lifecycle and the existing project sink routes them to Wiz. A
+project-level override disables the inherited managed constraint that would
+otherwise block service-account key creation.
 
 No new project, billing-account attachment, bucket, custom TDR, or Wiz write
 credential is required. A real user-managed key exists briefly during each

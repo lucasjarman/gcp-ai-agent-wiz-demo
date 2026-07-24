@@ -42,3 +42,18 @@ resource "google_org_policy_policy" "storage_resource_use" {
 
   depends_on = [google_project_service.apis]
 }
+
+resource "google_org_policy_policy" "allow_service_account_key_creation" {
+  name   = "projects/${var.project_id}/policies/iam.managed.disableServiceAccountKeyCreation"
+  parent = "projects/${var.project_id}"
+
+  spec {
+    inherit_from_parent = false
+
+    rules {
+      enforce = "FALSE"
+    }
+  }
+
+  depends_on = [google_project_service.apis]
+}

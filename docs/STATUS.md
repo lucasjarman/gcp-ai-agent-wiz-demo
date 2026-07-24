@@ -45,6 +45,9 @@ Last updated: 2026-07-24 (Australia/Melbourne)
 - Terraform replaced the three rule-93 canaries with
   `ai-dlc-rule90-canary`, granted the app GSA key administration only on that
   canary, and removed the obsolete Token Creator bindings.
+- The first rule-90 smoke test was rejected by inherited organization policy
+  `iam.managed.disableServiceAccountKeyCreation`; the scenario therefore
+  defines a project-level exception for this intentionally vulnerable sandbox.
 
 ## Current deployment
 
