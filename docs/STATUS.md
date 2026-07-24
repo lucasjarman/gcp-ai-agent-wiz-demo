@@ -1,6 +1,38 @@
 # Project status
 
-Last updated: 2026-07-23 (Australia/Melbourne)
+Last updated: 2026-07-24 (Australia/Melbourne)
+
+## Scenario 3 build in progress
+
+- The no-code Scenario 1 smoke test succeeded. Wiz received the Sensor token
+  access event and two successful GKE `create pods exec` audit events.
+- A second catalog review found that built-in correlation TDR
+  `cer-correlation-id-93` is enabled in this tenant. It joins GKE Sensor
+  evidence for service-account enumeration and impersonation to normalized GCP
+  Audit Logs and generates a Critical Issue.
+- Scenario 3 now uses an exact hidden chat prompt plus operator token to run one
+  fixed service-account enumeration and three fixed, keyless impersonations
+  directly from the AI workload container. The requested access tokens are
+  discarded without being printed, stored, or used.
+- GCP exposes `GenerateAccessToken` as a Data Access event but requires it to be
+  enabled under `iam.googleapis.com`; the Service Account Credentials API does
+  not accept an independent audit configuration.
+- The `linux/amd64` container build includes Google Cloud CLI 577.0.0 and all
+  24 image tests pass.
+- BWS project `wiz-demos` holds separate random values named
+  `insighthub-scenario-3-prompt` and `insighthub-scenario-3-run-token`.
+  Kubernetes Secret `ai-dlc-demo/insighthub-demo-scenarios` contains only their
+  SHA-256 digests.
+- The rule-93 design stays in `lucas-ai-agent-demo`; it does not require a new
+  project, billing-account attachment, custom Wiz rule, or Wiz write API
+  credentials.
+- Terraform provisioned the three role-less canary identities, their
+  identity-scoped Token Creator bindings, and IAM Data Access logging. All
+  canaries have zero user-managed keys and no project roles; the post-apply
+  Terraform plan is clean.
+- The live application has not yet been redeployed with Scenario 3. Deploy,
+  then run one end-to-end validation within a single 20-minute correlation
+  window.
 
 ## Current deployment
 

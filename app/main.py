@@ -11,6 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agent_service import AgentService
+from demo_scenario import (
+    DemoScenarioAuthorizationError,
+    DemoScenarioRateLimitError,
+    DemoScenarioUnavailableError,
+)
 
 # SECURITY ISSUE: Hardcoded credentials — should be in Secret Manager
 INTERNAL_API_KEY = "sk-ins-prod-9f2c8a4b1e7d3f6a"
@@ -42,6 +47,7 @@ class ChatHistoryItem(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     history: list[ChatHistoryItem] = Field(default_factory=list, max_length=10)
+    scenario_token: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 def get_db():
@@ -136,7 +142,14 @@ async def chat(request: ChatRequest):
         return await get_agent_service().chat(
             request.message,
             [item.model_dump() for item in request.history],
+            request.scenario_token,
         )
+    except DemoScenarioAuthorizationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except DemoScenarioRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except DemoScenarioUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Agent unavailable: {exc}") from exc
 

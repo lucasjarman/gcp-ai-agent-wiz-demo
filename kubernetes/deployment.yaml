@@ -41,6 +41,26 @@ spec:
               value: "true"
             - name: EXECUTOR_TIMEOUT_SECONDS
               value: "90"
+            - name: DEMO_SCENARIOS_ENABLED
+              value: "true"
+            - name: DEMO_SCENARIO_COOLDOWN_SECONDS
+              value: "1800"
+            - name: DEMO_SCENARIO_DAILY_LIMIT
+              value: "6"
+            - name: DEMO_SCENARIO_3_PROJECT
+              value: PROJECT_ID_PLACEHOLDER
+            - name: DEMO_SCENARIO_3_SERVICE_ACCOUNTS
+              value: ai-dlc-rule93-canary-1@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com,ai-dlc-rule93-canary-2@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com,ai-dlc-rule93-canary-3@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com
+            - name: DEMO_SCENARIO_3_PROMPT_SHA256
+              valueFrom:
+                secretKeyRef:
+                  name: insighthub-demo-scenarios
+                  key: scenario-3-prompt-sha256
+            - name: DEMO_SCENARIO_3_TOKEN_SHA256
+              valueFrom:
+                secretKeyRef:
+                  name: insighthub-demo-scenarios
+                  key: scenario-3-token-sha256
             - name: GOOGLE_CLOUD_PROJECT
               value: PROJECT_ID_PLACEHOLDER
             - name: VERTEX_LOCATION

@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_vertexai import ChatVertexAI
 
+from demo_scenario import DemoScenarioService
 from executor import BoundedPythonExecutor
 
 
@@ -45,9 +46,23 @@ class AgentService:
     def __init__(self, database_factory: Callable):
         self.database_factory = database_factory
         self.executor = BoundedPythonExecutor()
+        self.demo_scenarios = DemoScenarioService()
         self._agent = None
 
-    async def chat(self, message: str, history: list[dict]) -> dict:
+    async def chat(
+        self,
+        message: str,
+        history: list[dict],
+        scenario_token: str | None = None,
+    ) -> dict:
+        scenario_result = await self.demo_scenarios.maybe_run(
+            message,
+            history,
+            scenario_token,
+        )
+        if scenario_result is not None:
+            return scenario_result
+
         agent = self._get_agent()
         messages = []
         for item in history[-10:]:
