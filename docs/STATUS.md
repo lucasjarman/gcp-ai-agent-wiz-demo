@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-24 (Australia/Melbourne)
 
-## Scenario 3 build in progress
+## Scenario 3 correlation validation
 
 - The no-code Scenario 1 smoke test succeeded. Wiz received the Sensor token
   access event and two successful GKE `create pods exec` audit events.
@@ -10,15 +10,14 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   `cer-correlation-id-93` is enabled in this tenant. It joins GKE Sensor
   evidence for service-account enumeration and impersonation to normalized GCP
   Audit Logs and generates a Critical Issue.
-- Scenario 3 now uses an exact hidden chat prompt plus operator token to run one
-  fixed service-account enumeration and three fixed, keyless impersonations
-  directly from the AI workload container. The requested access tokens are
-  discarded without being printed, stored, or used.
+- Scenario 3 uses an exact hidden chat prompt plus operator token to run one
+  fixed service-account enumeration and three fixed, keyless impersonated IAM
+  reads directly from the AI workload container.
 - GCP exposes `GenerateAccessToken` as a Data Access event but requires it to be
   enabled under `iam.googleapis.com`; the Service Account Credentials API does
   not accept an independent audit configuration.
 - The `linux/amd64` container build includes Google Cloud CLI 577.0.0 and all
-  24 image tests pass.
+  26 image tests pass.
 - BWS project `wiz-demos` holds separate random values named
   `insighthub-scenario-3-prompt` and `insighthub-scenario-3-run-token`.
   Kubernetes Secret `ai-dlc-demo/insighthub-demo-scenarios` contains only their
@@ -30,9 +29,14 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   identity-scoped Token Creator bindings, and IAM Data Access logging. All
   canaries have zero user-managed keys and no project roles; the post-apply
   Terraform plan is clean.
-- The live application has not yet been redeployed with Scenario 3. Deploy,
-  then run one end-to-end validation within a single 20-minute correlation
-  window.
+- The first live trigger completed at `2026-07-24T01:05:39Z`. Wiz ingested the
+  exact Sensor 527/529 events and eight IAM Credentials audit events from the
+  app container, but token minting alone left the normalized acting-as field
+  empty and could not satisfy rule 93.
+- The corrected trigger uses each role-less canary for a fixed IAM read. It
+  accepts either success or the exact expected `iam.serviceAccounts.get`
+  denial, creating delegated API activity without granting access to data.
+  End-to-end rule-93 validation remains in progress.
 
 ## Current deployment
 
@@ -51,9 +55,7 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   GCP workload identity for this controlled demo.
 - GitHub Actions provides source and image scanning, commit-SHA image tagging,
   code-to-cloud tagging, deployment, and live smoke testing.
-- Commit `67fdd3eafd48605807d1c98362064e98bbde110d` is deployed as Artifact
-  Registry digest `sha256:1d03275d05ca15660c80d2188a9e3db51d9bc435b2105e73ada9b49b0ef3e7ee`.
-  The GKE Deployment is 1/1 ready, health and SQL smoke tests pass, and the live
+- The GKE Deployment is 1/1 ready, health and SQL smoke tests pass, and the live
   enterprise-analysis prompt finds all six matching customers, invokes bounded
   Python, and returns the correct `6083.33` average. The retired
   `ai-agent-exec` namespace and its old gVisor Job controls were deleted.

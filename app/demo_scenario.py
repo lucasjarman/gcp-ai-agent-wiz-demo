@@ -115,13 +115,21 @@ class DemoScenarioService:
                     [
                         "gcloud",
                         f"--impersonate-service-account={service_account}",
-                        "auth",
-                        "print-access-token",
+                        "iam",
+                        "service-accounts",
+                        "describe",
+                        service_account,
+                        f"--project={project}",
+                        "--format=none",
                         "--quiet",
                     ],
                     child_env,
                 )
-                if impersonated.returncode != 0:
+                expected_denial = (
+                    impersonated.returncode == 1
+                    and b"iam.serviceAccounts.get' denied" in impersonated.stderr
+                )
+                if impersonated.returncode != 0 and not expected_denial:
                     raise DemoScenarioUnavailableError("Canary identity impersonation failed.")
 
         summary = {
@@ -181,7 +189,7 @@ class DemoScenarioService:
                 env=child_env,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
                 timeout=90,
                 check=False,
             )

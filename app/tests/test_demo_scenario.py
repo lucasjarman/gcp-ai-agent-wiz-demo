@@ -68,7 +68,7 @@ def test_scenario_uses_only_fixed_gcloud_commands(monkeypatch):
 
     def fake_run(command, **kwargs):
         commands.append(command)
-        return type("Completed", (), {"returncode": 0})()
+        return type("Completed", (), {"returncode": 0, "stderr": b""})()
 
     with patch("demo_scenario.subprocess.run", side_effect=fake_run):
         result = asyncio.run(service.maybe_run(TRIGGER, [], TOKEN))
@@ -89,11 +89,67 @@ def test_scenario_uses_only_fixed_gcloud_commands(monkeypatch):
         assert command == [
             "gcloud",
             f"--impersonate-service-account={service_account}",
-            "auth",
-            "print-access-token",
+            "iam",
+            "service-accounts",
+            "describe",
+            service_account,
+            "--project=canary-project",
+            "--format=none",
             "--quiet",
         ]
     assert all(isinstance(argument, str) for command in commands for argument in command)
+
+
+def test_scenario_accepts_expected_roleless_canary_denial(monkeypatch):
+    configure_scenario(monkeypatch)
+    service = DemoScenarioService()
+    calls = 0
+
+    def fake_run(command, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return type("Completed", (), {"returncode": 0, "stderr": b""})()
+        return type(
+            "Completed",
+            (),
+            {
+                "returncode": 1,
+                "stderr": b"Permission 'iam.serviceAccounts.get' denied",
+            },
+        )()
+
+    with patch("demo_scenario.subprocess.run", side_effect=fake_run):
+        result = asyncio.run(service.maybe_run(TRIGGER, [], TOKEN))
+
+    assert result["summary"]["status"] == "completed"
+
+
+def test_scenario_rejects_token_mint_denial(monkeypatch):
+    configure_scenario(monkeypatch)
+    service = DemoScenarioService()
+    calls = 0
+
+    def fake_run(command, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return type("Completed", (), {"returncode": 0, "stderr": b""})()
+        return type(
+            "Completed",
+            (),
+            {
+                "returncode": 1,
+                "stderr": b"Permission 'iam.serviceAccounts.getAccessToken' denied",
+            },
+        )()
+
+    with patch("demo_scenario.subprocess.run", side_effect=fake_run):
+        try:
+            asyncio.run(service.maybe_run(TRIGGER, [], TOKEN))
+            raise AssertionError("Expected token mint denial to fail the scenario")
+        except DemoScenarioUnavailableError:
+            pass
 
 
 def test_scenario_rejects_non_canary_identity_configuration(monkeypatch):
