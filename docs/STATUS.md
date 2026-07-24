@@ -49,6 +49,12 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   constraints `iam.managed.disableServiceAccountKeyCreation` and
   `iam.disableServiceAccountKeyCreation`; the scenario therefore defines
   project-level exceptions for this intentionally vulnerable sandbox.
+- Live run `feca1bfa-9fac-4676-b489-5071586e14f0` completed at
+  `2026-07-24T02:55:41Z`. Wiz received Sensor rules 527 and 528 from the same
+  AI app container and the successful GCP `CreateServiceAccountKey` event from
+  the app GSA. The matching delete succeeded two seconds later, and the canary
+  has zero user-managed keys after the run. Rule-90 correlation remains pending
+  its 20–22-minute evaluation window.
 
 ## Current deployment
 
