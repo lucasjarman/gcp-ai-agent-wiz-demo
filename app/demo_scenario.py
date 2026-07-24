@@ -8,6 +8,7 @@ import tempfile
 import time
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 
 class DemoScenarioAuthorizationError(Exception):
@@ -79,7 +80,7 @@ class DemoScenarioService:
 
     def _execute(self) -> dict:
         project = self._required("DEMO_SCENARIO_3_PROJECT")
-        service_accounts = self._service_accounts(project)
+        service_account = self._service_account(project)
 
         run_id = str(uuid.uuid4())
 
@@ -100,8 +101,8 @@ class DemoScenarioService:
                     "service-accounts",
                     "list",
                     f"--project={project}",
-                    "--filter=email:ai-dlc-rule93-canary-",
-                    "--limit=3",
+                    "--filter=email:ai-dlc-rule90-canary",
+                    "--limit=1",
                     "--format=value(email)",
                     "--quiet",
                 ],
@@ -110,68 +111,83 @@ class DemoScenarioService:
             if listed.returncode != 0:
                 raise DemoScenarioUnavailableError("Canary identity enumeration failed.")
 
-            for service_account in service_accounts:
-                impersonated = self._run(
-                    [
-                        "gcloud",
-                        f"--impersonate-service-account={service_account}",
-                        "iam",
-                        "service-accounts",
-                        "describe",
-                        service_account,
-                        f"--project={project}",
-                        "--format=none",
-                        "--quiet",
-                    ],
-                    child_env,
-                )
-                expected_denial = (
-                    impersonated.returncode == 1
-                    and b"iam.serviceAccounts.get' denied" in impersonated.stderr
-                )
-                if impersonated.returncode != 0 and not expected_denial:
-                    raise DemoScenarioUnavailableError("Canary identity impersonation failed.")
+            key_path = Path(temporary) / "canary-key.json"
+            created = self._run(
+                [
+                    "gcloud",
+                    "iam",
+                    "service-accounts",
+                    "keys",
+                    "create",
+                    str(key_path),
+                    f"--iam-account={service_account}",
+                    f"--project={project}",
+                    "--quiet",
+                ],
+                child_env,
+            )
+            if created.returncode != 0:
+                raise DemoScenarioUnavailableError("Canary key creation failed.")
+
+            try:
+                key_id = json.loads(key_path.read_text())["private_key_id"]
+                if not isinstance(key_id, str) or not key_id:
+                    raise ValueError
+            except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                raise DemoScenarioUnavailableError("Canary key output was invalid.") from exc
+            finally:
+                key_path.unlink(missing_ok=True)
+
+            deleted = self._run(
+                [
+                    "gcloud",
+                    "iam",
+                    "service-accounts",
+                    "keys",
+                    "delete",
+                    key_id,
+                    f"--iam-account={service_account}",
+                    f"--project={project}",
+                    "--quiet",
+                ],
+                child_env,
+            )
+            if deleted.returncode != 0:
+                raise DemoScenarioUnavailableError("Canary key cleanup failed.")
 
         summary = {
             "run_id": run_id,
-            "target_count": len(service_accounts),
+            "target_count": 1,
             "status": "completed",
         }
         return {
-            "answer": "Controlled identity-lateral-movement canary completed successfully.",
+            "answer": "Controlled service-account persistence canary completed successfully.",
             "summary": summary,
             "trace": [
                 {
                     "type": "tool_call",
-                    "name": "run_identity_lateral_movement_canary",
-                    "input": {"run_id": run_id, "target_count": len(service_accounts)},
+                    "name": "run_service_account_persistence_canary",
+                    "input": {"run_id": run_id, "target_count": 1},
                 },
                 {
                     "type": "tool_result",
-                    "name": "run_identity_lateral_movement_canary",
+                    "name": "run_service_account_persistence_canary",
                     "output": json.dumps(summary),
                 },
             ],
         }
 
     @staticmethod
-    def _service_accounts(project: str) -> list[str]:
-        value = DemoScenarioService._required("DEMO_SCENARIO_3_SERVICE_ACCOUNTS")
-        service_accounts = value.split(",")
-        expected_suffix = f"@{project}.iam.gserviceaccount.com"
-        if (
-            len(service_accounts) != 3
-            or len(set(service_accounts)) != 3
-            or any(
-                not service_account.startswith("ai-dlc-rule93-canary-")
-                or not service_account.endswith(expected_suffix)
-                for service_account in service_accounts
-            )
-        ):
+    def _service_account(project: str) -> str:
+        service_account = DemoScenarioService._required(
+            "DEMO_SCENARIO_3_SERVICE_ACCOUNT"
+        )
+        expected = f"ai-dlc-rule90-canary@{project}.iam.gserviceaccount.com"
+        if service_account != expected:
             raise DemoScenarioUnavailableError(
                 "Demo scenario identity configuration is invalid."
             )
-        return service_accounts
+        return service_account
 
     @staticmethod
     def _required(name: str) -> str:

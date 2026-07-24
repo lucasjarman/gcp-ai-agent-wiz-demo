@@ -3,9 +3,9 @@ output "artifact_registry_repository" {
   value       = google_artifact_registry_repository.app.name
 }
 
-output "canary_service_accounts" {
-  description = "Keyless, role-less service accounts used by the built-in Wiz correlation 93 demo"
-  value       = sort([for service_account in google_service_account.lateral_canary : service_account.email])
+output "canary_service_account" {
+  description = "Role-less service account used by the built-in Wiz correlation 90 demo"
+  value       = google_service_account.persistence_canary.email
 }
 
 output "data_bucket" {

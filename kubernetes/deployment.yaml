@@ -49,8 +49,8 @@ spec:
               value: "6"
             - name: DEMO_SCENARIO_3_PROJECT
               value: PROJECT_ID_PLACEHOLDER
-            - name: DEMO_SCENARIO_3_SERVICE_ACCOUNTS
-              value: ai-dlc-rule93-canary-1@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com,ai-dlc-rule93-canary-2@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com,ai-dlc-rule93-canary-3@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com
+            - name: DEMO_SCENARIO_3_SERVICE_ACCOUNT
+              value: ai-dlc-rule90-canary@PROJECT_ID_PLACEHOLDER.iam.gserviceaccount.com
             - name: DEMO_SCENARIO_3_PROMPT_SHA256
               valueFrom:
                 secretKeyRef:

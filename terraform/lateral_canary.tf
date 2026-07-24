@@ -1,27 +1,15 @@
-locals {
-  lateral_canary_service_accounts = {
-    one   = "ai-dlc-rule93-canary-1"
-    three = "ai-dlc-rule93-canary-3"
-    two   = "ai-dlc-rule93-canary-2"
-  }
-}
-
-resource "google_service_account" "lateral_canary" {
-  for_each = local.lateral_canary_service_accounts
-
+resource "google_service_account" "persistence_canary" {
   project      = var.project_id
-  account_id   = each.value
-  display_name = "InsightHub rule 93 canary ${each.key}"
-  description  = "Keyless, role-less identity used only by controlled Wiz correlation demo 93"
+  account_id   = "ai-dlc-rule90-canary"
+  display_name = "InsightHub rule 90 canary"
+  description  = "Role-less identity used only by controlled Wiz correlation demo 90"
 
   depends_on = [google_project_service.apis]
 }
 
-resource "google_service_account_iam_member" "app_can_impersonate_lateral_canary" {
-  for_each = google_service_account.lateral_canary
-
-  service_account_id = each.value.name
-  role               = "roles/iam.serviceAccountTokenCreator"
+resource "google_service_account_iam_member" "app_can_manage_persistence_canary_keys" {
+  service_account_id = google_service_account.persistence_canary.name
+  role               = "roles/iam.serviceAccountKeyAdmin"
   member             = "serviceAccount:${google_service_account.app.email}"
 }
 

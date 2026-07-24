@@ -6,13 +6,9 @@ Last updated: 2026-07-24 (Australia/Melbourne)
 
 - The no-code Scenario 1 smoke test succeeded. Wiz received the Sensor token
   access event and two successful GKE `create pods exec` audit events.
-- A second catalog review found that built-in correlation TDR
-  `cer-correlation-id-93` is enabled in this tenant. It joins GKE Sensor
-  evidence for service-account enumeration and impersonation to normalized GCP
-  Audit Logs and generates a Critical Issue.
-- Scenario 3 uses an exact hidden chat prompt plus operator token to run one
-  fixed service-account enumeration and three fixed, keyless impersonated IAM
-  reads directly from the AI workload container.
+- Scenario 3 uses an exact hidden chat prompt plus operator token to run fixed
+  service-account enumeration and disposable key-creation commands directly
+  from the AI workload container.
 - GCP exposes `GenerateAccessToken` as a Data Access event but requires it to be
   enabled under `iam.googleapis.com`; the Service Account Credentials API does
   not accept an independent audit configuration.
@@ -22,13 +18,9 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   `insighthub-scenario-3-prompt` and `insighthub-scenario-3-run-token`.
   Kubernetes Secret `ai-dlc-demo/insighthub-demo-scenarios` contains only their
   SHA-256 digests.
-- The rule-93 design stays in `lucas-ai-agent-demo`; it does not require a new
+- The scenario stays in `lucas-ai-agent-demo`; it does not require a new
   project, billing-account attachment, custom Wiz rule, or Wiz write API
   credentials.
-- Terraform provisioned the three role-less canary identities, their
-  identity-scoped Token Creator bindings, and IAM Data Access logging. All
-  canaries have zero user-managed keys and no project roles; the post-apply
-  Terraform plan is clean.
 - The first live trigger completed at `2026-07-24T01:05:39Z`. Wiz ingested the
   exact Sensor 527/529 events and eight IAM Credentials audit events from the
   app container, but token minting alone left the normalized acting-as field
@@ -43,11 +35,16 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   `2026-07-24T01:26:45Z`. Wiz ingested Sensor 527/529 events from the app
   container and three GCP IAM events with the app GSA as actor and three
   distinct canaries as `actingAs`.
-- Rule-93 promotion is blocked by enabled tenant IGNORE rule `test-konrad`
-  (`9b4189f5-ac81-4205-b791-01230f3f9073`). It targets Runtime Threat
-  Detection Issues with no project, resource, or TDR scope and reports 149
-  ignored threat issues. Do not disable it without tenant-owner approval;
-  scope or disable it before the next trigger.
+- Rule 93 did not produce its final correlation even though both source streams
+  arrived. The exact events did not match the previously suspected ignore rule,
+  so that explanation was incorrect.
+- The replacement uses enabled built-in correlation
+  `cer-correlation-id-90`: Sensor rules 527/528 plus the GCP
+  `CreateServiceAccountKey` Admin Activity event. The canary has no roles, and
+  each generated key is deleted locally and from IAM immediately.
+- Terraform replaced the three rule-93 canaries with
+  `ai-dlc-rule90-canary`, granted the app GSA key administration only on that
+  canary, and removed the obsolete Token Creator bindings.
 
 ## Current deployment
 

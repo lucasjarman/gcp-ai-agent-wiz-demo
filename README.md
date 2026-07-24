@@ -27,9 +27,9 @@ GCP Audit Logs
 Controlled Scenario 3
   -> exact hidden chat prompt + separate operator run token
   -> fixed gcloud commands in the AI workload container
-  -> service-account enumeration and three keyless canary impersonations
+  -> service-account enumeration and disposable canary-key creation
   -> Wiz Sensor + GCP Audit Logs
-  -> built-in cross-origin correlation 93
+  -> built-in cross-origin correlation 90
 ```
 
 Infrastructure is defined in `terraform/`, and Kubernetes application controls are in `kubernetes/deployment.yaml`. Terraform uses a committed GCS backend declaration so Wiz can correlate source declarations, Terraform state, and live GCP resources.
@@ -44,8 +44,8 @@ terraform -chdir=terraform validate
 
 ## Controlled threat scenario
 
-Scenario 3 is disabled unless its digest-only Kubernetes Secret and three
-role-less canary identities are present. The exact trigger and operator token
+Scenario 3 is disabled unless its digest-only Kubernetes Secret and dedicated
+role-less canary identity are present. The exact trigger and operator token
 are stored in BWS as `insighthub-scenario-3-prompt` and
 `insighthub-scenario-3-run-token`. Enter the trigger into the normal agent chat
 with empty history; the browser asks for the operator token only after the
@@ -53,10 +53,11 @@ server recognizes the trigger.
 
 The action is deterministic and does not expose a general-purpose cloud or
 shell tool. It runs one fixed `gcloud iam service-accounts list` command, then
-requests short-lived tokens for three dedicated canary service accounts. The
-tokens are discarded without being printed, stored, or used. This satisfies
-the enabled built-in Wiz correlation `cer-correlation-id-93`. Runs are
-serialized, limited to six per UTC day, and have a 30-minute cooldown.
+creates a user-managed key for the dedicated canary service account. The local
+key material and the cloud key are deleted immediately after its identifier is
+read. This supplies the Sensor and GCP Audit evidence used by the enabled
+built-in Wiz correlation `cer-correlation-id-90`. Runs are serialized, limited
+to six per UTC day, and have a 30-minute cooldown.
 
 ## Demo safety
 
