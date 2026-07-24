@@ -57,8 +57,8 @@ creates a user-managed key for the dedicated canary service account. The local
 key material and the cloud key are deleted immediately after its identifier is
 read. This supplies the Sensor and GCP Audit evidence used by the enabled
 built-in Wiz correlation `cer-correlation-id-90`. Runs are serialized, limited
-to six per UTC day, and have a 30-minute cooldown. A project-level organization
-policy exception permits this intentionally vulnerable key lifecycle only in
+to six per UTC day, and have a 30-minute cooldown. Project-level organization
+policy exceptions permit this intentionally vulnerable key lifecycle only in
 the demo project.
 
 ## Demo safety

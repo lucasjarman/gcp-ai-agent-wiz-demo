@@ -57,3 +57,18 @@ resource "google_org_policy_policy" "allow_service_account_key_creation" {
 
   depends_on = [google_project_service.apis]
 }
+
+resource "google_org_policy_policy" "allow_service_account_key_creation_legacy" {
+  name   = "projects/${var.project_id}/policies/iam.disableServiceAccountKeyCreation"
+  parent = "projects/${var.project_id}"
+
+  spec {
+    inherit_from_parent = false
+
+    rules {
+      enforce = "FALSE"
+    }
+  }
+
+  depends_on = [google_project_service.apis]
+}

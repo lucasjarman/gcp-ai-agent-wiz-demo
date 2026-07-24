@@ -46,8 +46,9 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   `ai-dlc-rule90-canary`, granted the app GSA key administration only on that
   canary, and removed the obsolete Token Creator bindings.
 - The first rule-90 smoke test was rejected by inherited organization policy
-  `iam.managed.disableServiceAccountKeyCreation`; the scenario therefore
-  defines a project-level exception for this intentionally vulnerable sandbox.
+  constraints `iam.managed.disableServiceAccountKeyCreation` and
+  `iam.disableServiceAccountKeyCreation`; the scenario therefore defines
+  project-level exceptions for this intentionally vulnerable sandbox.
 
 ## Current deployment
 
