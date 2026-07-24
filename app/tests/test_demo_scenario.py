@@ -62,7 +62,7 @@ def test_trigger_requires_empty_history_and_operator_token(monkeypatch):
         pass
 
 
-def test_scenario_uses_only_fixed_gcloud_commands(monkeypatch):
+def test_scenario_uses_only_fixed_commands(monkeypatch):
     configure_scenario(monkeypatch)
     service = DemoScenarioService()
     commands = []
@@ -79,29 +79,33 @@ def test_scenario_uses_only_fixed_gcloud_commands(monkeypatch):
     assert result["trace"][0]["name"] == "run_service_account_persistence_canary"
     assert result["trace"][1]["name"] == "run_service_account_persistence_canary"
     assert result["summary"]["target_count"] == 1
-    assert len(commands) == 3
-    assert commands[0][:4] == ["gcloud", "iam", "service-accounts", "list"]
-    assert commands[0][4:] == [
+    assert len(commands) == 4
+    assert commands[0] == [
+        "cat",
+        "/var/run/secrets/kubernetes.io/serviceaccount/token",
+    ]
+    assert commands[1][:4] == ["gcloud", "iam", "service-accounts", "list"]
+    assert commands[1][4:] == [
         "--project=canary-project",
         "--filter=email:ai-dlc-rule90-canary",
         "--limit=1",
         "--format=value(email)",
         "--quiet",
     ]
-    assert commands[1][:6] == [
+    assert commands[2][:6] == [
         "gcloud",
         "iam",
         "service-accounts",
         "keys",
         "create",
-        commands[1][5],
+        commands[2][5],
     ]
-    assert commands[1][6:] == [
+    assert commands[2][6:] == [
         f"--iam-account={CANARY_SERVICE_ACCOUNT}",
         "--project=canary-project",
         "--quiet",
     ]
-    assert commands[2] == [
+    assert commands[3] == [
         "gcloud",
         "iam",
         "service-accounts",
@@ -123,7 +127,7 @@ def test_scenario_rejects_key_creation_failure(monkeypatch):
     def fake_run(command, **kwargs):
         nonlocal calls
         calls += 1
-        if calls == 1:
+        if calls <= 2:
             return type("Completed", (), {"returncode": 0, "stderr": b""})()
         return type("Completed", (), {"returncode": 1, "stderr": b"denied"})()
 

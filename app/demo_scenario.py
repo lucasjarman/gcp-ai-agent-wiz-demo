@@ -94,6 +94,15 @@ class DemoScenarioService:
                 "TMPDIR": temporary,
             }
 
+            token_read = self._run(
+                ["cat", "/var/run/secrets/kubernetes.io/serviceaccount/token"],
+                child_env,
+            )
+            if token_read.returncode != 0:
+                raise DemoScenarioUnavailableError(
+                    "Kubernetes identity inspection failed."
+                )
+
             listed = self._run(
                 [
                     "gcloud",

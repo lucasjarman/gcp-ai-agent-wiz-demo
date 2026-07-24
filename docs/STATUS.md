@@ -13,7 +13,7 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   enabled under `iam.googleapis.com`; the Service Account Credentials API does
   not accept an independent audit configuration.
 - The `linux/amd64` container build includes Google Cloud CLI 577.0.0 and all
-  26 image tests pass.
+  25 image tests pass.
 - BWS project `wiz-demos` holds separate random values named
   `insighthub-scenario-3-prompt` and `insighthub-scenario-3-run-token`.
   Kubernetes Secret `ai-dlc-demo/insighthub-demo-scenarios` contains only their
@@ -53,8 +53,17 @@ Last updated: 2026-07-24 (Australia/Melbourne)
   `2026-07-24T02:55:41Z`. Wiz received Sensor rules 527 and 528 from the same
   AI app container and the successful GCP `CreateServiceAccountKey` event from
   the app GSA. The matching delete succeeded two seconds later, and the canary
-  has zero user-managed keys after the run. Rule-90 correlation remains pending
-  its 20–22-minute evaluation window.
+  has zero user-managed keys after the run.
+- Rule 90 produced no detection. Its built-in matcher selects Sensor events
+  through legacy field `alertTypeDetails.common.alertTypeId`, while the live
+  rules 527 and 528 events identify their rule through
+  `alertTypeDetails.common.rule.id`. The attack inputs and join fields were
+  otherwise present, so this is not addressed with a custom TDR.
+- The permanent scenario now starts with a fixed, discarded read of the
+  mounted Kubernetes token. Native Sensor rule 265 elevates this behavior in
+  AI-agent context; the existing fixed `gcloud` actions then generate Sensor
+  rules 527/528 and real GCP key lifecycle audit events on the same workload
+  and identity path.
 
 ## Current deployment
 

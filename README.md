@@ -26,10 +26,9 @@ GCP Audit Logs
 
 Controlled Scenario 3
   -> exact hidden chat prompt + separate operator run token
-  -> fixed gcloud commands in the AI workload container
-  -> service-account enumeration and disposable canary-key creation
-  -> Wiz Sensor + GCP Audit Logs
-  -> built-in cross-origin correlation 90
+  -> fixed token-read and gcloud commands in the AI workload container
+  -> Sensor-observed identity access and disposable canary-key creation
+  -> native Wiz Sensor threat + GCP Audit Logs on shared workload context
 ```
 
 Infrastructure is defined in `terraform/`, and Kubernetes application controls are in `kubernetes/deployment.yaml`. Terraform uses a committed GCS backend declaration so Wiz can correlate source declarations, Terraform state, and live GCP resources.
@@ -52,14 +51,15 @@ with empty history; the browser asks for the operator token only after the
 server recognizes the trigger.
 
 The action is deterministic and does not expose a general-purpose cloud or
-shell tool. It runs one fixed `gcloud iam service-accounts list` command, then
-creates a user-managed key for the dedicated canary service account. The local
-key material and the cloud key are deleted immediately after its identifier is
-read. This supplies the Sensor and GCP Audit evidence used by the enabled
-built-in Wiz correlation `cer-correlation-id-90`. Runs are serialized, limited
-to six per UTC day, and have a 30-minute cooldown. Project-level organization
-policy exceptions permit this intentionally vulnerable key lifecycle only in
-the demo project.
+shell tool. It reads the mounted Kubernetes token with a fixed `cat` process
+whose output is discarded, runs one fixed `gcloud iam service-accounts list`
+command, then creates a user-managed key for the dedicated canary service
+account. The local key material and the cloud key are deleted immediately
+after its identifier is read. This produces a native AI-context Sensor threat
+and real GCP Audit activity on the same workload and identity path. Runs are
+serialized, limited to six per UTC day, and have a 30-minute cooldown.
+Project-level organization policy exceptions permit this intentionally
+vulnerable key lifecycle only in the demo project.
 
 ## Demo safety
 
